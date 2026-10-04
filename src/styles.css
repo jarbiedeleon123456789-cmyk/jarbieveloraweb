@@ -239,9 +239,11 @@ tbody tr:hover { background: rgba(255,255,255,0.03); }
 .jarv-controls { position: absolute; z-index: 4; right: max(32px, calc((100vw - 1320px) / 2)); bottom: 44px; display: flex; gap: 7px; }
 .jarv-controls button { min-height: 40px; padding: 0 13px; border: 1px solid #293440; background: #0a0d11e8; color: #a8b2bd; font: 600 10px 'Chakra Petch', 'Archivo', sans-serif; letter-spacing: .1em; cursor: pointer; transition: border-color .2s, color .2s, background .2s; }
 .jarv-controls button:hover, .jarv-controls button.is-on { border-color: #ffd21f88; color: #ffd21f; }
+.jarv-controls button:disabled { cursor: not-allowed; opacity: .45; }
 .jarv-controls button:first-child { width: 40px; padding: 0; font-size: 21px; }
 .jarv-controls button.jarv-rebuild { border-color: #ffd21f; background: #ffd21f; color: #07090c; }
 .jarv-controls button.jarv-rebuild:hover { background: #ffe16a; }
+.jarv-audio-error { position: absolute; z-index: 5; right: max(32px, calc((100vw - 1320px) / 2)); bottom: 145px; max-width: min(310px, calc(100% - 32px)); padding: 9px 12px; border: 1px solid #71463f; background: #180e0def; color: #ff9a80; font: 9px 'IBM Plex Mono', Consolas, monospace; }
 .jarv-explode-scrubber { position: absolute; z-index: 4; right: max(32px, calc((100vw - 1320px) / 2)); bottom: 94px; display: flex; width: min(310px, 27vw); align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #26313c; background: #0a0d11e8; color: #788594; font: 8px 'IBM Plex Mono', Consolas, monospace; letter-spacing: .1em; }
 .jarv-explode-scrubber input { width: 100%; height: 3px; accent-color: #ffd21f; cursor: ew-resize; }
 .jarv-explode-scrubber input:disabled { cursor: wait; opacity: .45; }
@@ -346,6 +348,7 @@ tbody tr:hover { background: rgba(255,255,255,0.03); }
   .jarv-controls { right: 50%; bottom: 57px; transform: translateX(50%); width: max-content; }
   .jarv-controls button { min-height: 36px; padding: 0 10px; font-size: 9px; }
   .jarv-controls button:first-child { width: 36px; }
+  .jarv-audio-error { right: 16px; bottom: 148px; left: 16px; max-width: none; }
   .jarv-explode-scrubber { right: 16px; bottom: 105px; left: 16px; width: auto; }
   .jarv-canvas-hint { bottom: 20px; font-size: 7px; letter-spacing: .08em; }
   .jarv-model-credit { display: none; }

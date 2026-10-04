@@ -6,6 +6,59 @@ import { ASSEMBLY_STEPS, CAR_PARTS, explodeFactor } from '../lib/carParts';
 import { JARV_PRODUCTS } from '../lib/jarvProducts';
 import { money } from '../config';
 
+function playTone(context, frequency, endFrequency, duration, volume, type = 'sine') {
+  const now = context.currentTime;
+  const oscillator = context.createOscillator();
+  const gain = context.createGain();
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(frequency, now);
+  oscillator.frequency.exponentialRampToValueAtTime(endFrequency, now + duration);
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(volume, now + 0.008);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+  oscillator.connect(gain);
+  gain.connect(context.destination);
+  oscillator.start(now);
+  oscillator.stop(now + duration);
+}
+
+function playShowroomSound(context, kind) {
+  if (kind === 'motion') {
+    const now = context.currentTime;
+    const sampleCount = Math.ceil(context.sampleRate * 0.32);
+    const buffer = context.createBuffer(1, sampleCount, context.sampleRate);
+    const samples = buffer.getChannelData(0);
+    for (let index = 0; index < sampleCount; index += 1) {
+      samples[index] = Math.random() * 2 - 1;
+    }
+
+    const source = context.createBufferSource();
+    const filter = context.createBiquadFilter();
+    const gain = context.createGain();
+    source.buffer = buffer;
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(950, now);
+    filter.frequency.exponentialRampToValueAtTime(180, now + 0.32);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.035, now + 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
+    source.connect(filter);
+    filter.connect(gain);
+    gain.connect(context.destination);
+    source.start(now);
+    source.stop(now + 0.32);
+    playTone(context, 105, 55, 0.32, 0.018);
+    return;
+  }
+
+  if (kind === 'select') {
+    playTone(context, 720, 510, 0.075, 0.035);
+    return;
+  }
+
+  playTone(context, 390, 270, 0.055, 0.025);
+}
+
 function useReducedMotion() {
   const [reduced, setReduced] = useState(false);
   useEffect(() => {
@@ -38,7 +91,40 @@ export default function CarShowroom() {
   const [selected, setSelected] = useState(null);
   const [selectedPart, setSelectedPart] = useState(null);
   const [autoRotate, setAutoRotate] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [audioError, setAudioError] = useState('');
+  const audioContextRef = useRef(null);
+  const soundEnabledRef = useRef(false);
   const [hud, setHud] = useState({ progress: 0, explodeAmount: 100, active: -1, done: 0, exploded: false });
+  const audioSupported = typeof window !== 'undefined' && typeof window.AudioContext === 'function';
+
+  const playSound = (kind) => {
+    if (soundEnabledRef.current && audioContextRef.current?.state === 'running') {
+      playShowroomSound(audioContextRef.current, kind);
+    }
+  };
+
+  const toggleSound = () => {
+    if (soundEnabled) {
+      soundEnabledRef.current = false;
+      setSoundEnabled(false);
+      return;
+    }
+
+    if (!audioSupported) return;
+    const context = audioContextRef.current || new window.AudioContext();
+    audioContextRef.current = context;
+    soundEnabledRef.current = true;
+    setSoundEnabled(true);
+    setAudioError('');
+    context.resume()
+      .then(() => playShowroomSound(context, 'click'))
+      .catch(() => {
+        soundEnabledRef.current = false;
+        setSoundEnabled(false);
+        setAudioError('Sound could not start. Check your browser audio settings.');
+      });
+  };
 
   const onReady = useCallback(() => setModelReady(true), []);
 
@@ -97,6 +183,7 @@ export default function CarShowroom() {
     const focusPart = (event) => {
       setSelected(event.detail);
       setSelectedPart(null);
+      playSound('select');
     };
     window.addEventListener('jarv:focus-part', focusPart);
     return () => window.removeEventListener('jarv:focus-part', focusPart);
@@ -104,6 +191,7 @@ export default function CarShowroom() {
 
   const animate = (phase) => {
     simRef.current = { phase: reduced ? (phase === 'exploding' ? 'exploded' : 'assembled') : phase, start: performance.now() };
+    playSound('motion');
   };
   const toggleExploded = () => animate(hud.exploded ? 'assembling' : 'exploding');
   const rebuild = () => {
@@ -123,6 +211,7 @@ export default function CarShowroom() {
   const onModelPick = (key, partId) => {
     setSelected(key);
     setSelectedPart(partId);
+    playSound('select');
   };
 
   const product = selected ? JARV_PRODUCTS.find((item) => item.three_part === selected) : null;
@@ -183,6 +272,7 @@ export default function CarShowroom() {
                 onClick={() => {
                   setSelected((current) => current === part.key ? null : part.key);
                   setSelectedPart(null);
+                  playSound('select');
                 }}
               >
                 <i className={index < hud.done ? 'is-seated' : ASSEMBLY_STEPS[hud.active]?.key === part.key ? 'is-moving' : ''} />
@@ -198,7 +288,19 @@ export default function CarShowroom() {
         <button type="button" className={autoRotate ? 'is-on' : ''} onClick={() => setAutoRotate((value) => !value)} aria-label="Toggle automatic car rotation" title="Auto rotate">↻</button>
         <button type="button" onClick={toggleExploded}>{hud.exploded ? 'REASSEMBLE' : 'EXPLODE'}</button>
         <button type="button" className="jarv-rebuild" onClick={rebuild}>REBUILD</button>
+        <button
+          type="button"
+          className={soundEnabled ? 'is-on' : ''}
+          onClick={toggleSound}
+          disabled={!audioSupported}
+          aria-label={soundEnabled ? 'Turn sound effects off' : 'Turn sound effects on'}
+          aria-pressed={soundEnabled}
+          title={audioSupported ? 'Toggle sound effects' : 'Sound effects are not supported by this browser'}
+        >
+          SOUND {soundEnabled ? 'ON' : 'OFF'}
+        </button>
       </div>
+      {audioError && <p className="jarv-audio-error" role="status">{audioError}</p>}
 
       <label className="jarv-explode-scrubber">
         <span>ASSEMBLED</span>
