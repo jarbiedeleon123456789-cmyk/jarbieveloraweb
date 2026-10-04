@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 450" role="img">
+<defs>
+<radialGradient id="bg" cx="50%" cy="42%" r="70%"><stop offset="0" stop-color="#2a2e38"/><stop offset="1" stop-color="#0b0b0d"/></radialGradient>
+<radialGradient id="glow" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ffd84a" stop-opacity=".45"/><stop offset="1" stop-color="#ffd84a" stop-opacity="0"/></radialGradient>
+<linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f4f6fa"/><stop offset=".45" stop-color="#9aa3b2"/><stop offset="1" stop-color="#4a505c"/></linearGradient>
+<linearGradient id="metal2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e7eaf0"/><stop offset=".5" stop-color="#7c8493"/><stop offset="1" stop-color="#2d3139"/></linearGradient>
+<linearGradient id="dark" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a3d45"/><stop offset="1" stop-color="#121316"/></linearGradient>
+<linearGradient id="red" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff5a4d"/><stop offset="1" stop-color="#9c1d14"/></linearGradient>
+<linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe49a"/><stop offset=".5" stop-color="#d4a437"/><stop offset="1" stop-color="#7a5a14"/></linearGradient>
+</defs>
+<rect width="600" height="450" fill="url(#bg)"/>
+<ellipse cx="300" cy="215" rx="250" ry="190" fill="url(#glow)"/>
+<ellipse cx="300" cy="392" rx="190" ry="20" fill="#000" opacity=".55"/>
+<rect x="110" y="130" width="380" height="220" rx="18" fill="url(#dark)" stroke="#8a93a3" stroke-width="3"/><rect x="110" y="130" width="380" height="50" rx="18" fill="#0f1013"/><rect x="150" y="96" width="62" height="40" rx="6" fill="url(#red)"/><rect x="388" y="96" width="62" height="40" rx="6" fill="url(#metal)"/><text x="181" y="124" font-family="Arial" font-weight="800" font-size="30" text-anchor="middle" fill="#fff">+</text><text x="419" y="124" font-family="Arial" font-weight="800" font-size="34" text-anchor="middle" fill="#14161a">−</text><rect x="140" y="204" width="320" height="108" rx="10" fill="#1b1d22" stroke="#3a3d45" stroke-width="2"/><text x="300" y="250" font-family="Archivo,Arial,sans-serif" font-weight="800" font-size="40" text-anchor="middle" fill="#fff" letter-spacing="4">AGM 70Ah</text><text x="300" y="286" font-family="Arial" font-size="16" text-anchor="middle" fill="#9aa3b2" letter-spacing="1.5">12V  ·  760 CCA  ·  START-STOP</text><path d="M310 142 l-22 28 h18 l-8 24 l30 -34 h-20 z" fill="#ffd84a" opacity=".95"/>
+</svg>
