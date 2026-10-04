@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Product render staging</title>
+    <style>
+      html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #0b0e13; color: #dce5ee; font: 14px monospace; }
+      #status { position: fixed; z-index: 2; inset: 12px auto auto 12px; padding: 8px 12px; background: #0b0e13; }
+      canvas { display: block; }
+    </style>
+  </head>
+  <body>
+    <div id="status">Loading model…</div>
+    <script type="module">
+      import * as THREE from '/node_modules/three/build/three.module.js';
+      import { GLTFLoader } from '/node_modules/three/examples/jsm/loaders/GLTFLoader.js';
+      import { RoomEnvironment } from '/node_modules/three/examples/jsm/environments/RoomEnvironment.js';
+
+      const width = 1200;
+      const height = 900;
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color('#0b0e13');
+      const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(1);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.1;
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      document.body.appendChild(renderer.domElement);
+
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      pmrem.dispose();
+      scene.add(new THREE.HemisphereLight('#dbe9ff', '#161b24', 0.78));
+      const key = new THREE.DirectionalLight('#fff4df', 2.2);
+      key.position.set(-4, 8, -5);
+      key.castShadow = true;
+      key.shadow.radius = 7;
+      key.shadow.mapSize.set(2048, 2048);
+      scene.add(key);
+      const fill = new THREE.DirectionalLight('#b2d1ff', 1.45);
+      fill.position.set(5, 3, 5);
+      scene.add(fill);
+      const rim = new THREE.DirectionalLight('#ffffff', 1.35);
+      rim.position.set(0, 5, 6);
+      scene.add(rim);
+      const floor = new THREE.Mesh(
+        new THREE.PlaneGeometry(200, 200),
+        new THREE.MeshStandardMaterial({ color: '#080b10', metalness: 0.08, roughness: 0.82 }),
+      );
+      floor.rotation.x = -Math.PI / 2;
+      floor.position.y = -0.02;
+      floor.receiveShadow = true;
+      scene.add(floor);
+      const camera = new THREE.PerspectiveCamera(34, width / height, 0.02, 1000);
+      const sourceScene = (await new GLTFLoader().loadAsync('/models/nova-r9.glb')).scene;
+      sourceScene.updateMatrixWorld(true);
+      const sourceMeshes = [];
+      sourceScene.traverse((object) => {
+        if (object.isMesh) sourceMeshes.push(object);
+      });
+
+      const normalize = (value) => value.toLowerCase().replace(/[_\-.]+/g, ' ');
+      const pathName = (mesh) => {
+        const names = [];
+        for (let node = mesh; node; node = node.parent) names.push(normalize(node.name));
+        return names.join(' ');
+      };
+      const firstWheel = (mesh) => /tire 1\b/.test(pathName(mesh));
+      const filters = {
+        chassis: (mesh) => /under carreage|laferrari under 0/.test(pathName(mesh)),
+        wheel: firstWheel,
+        brake: (mesh) => /tire 1 disc|brakerearleft002/.test(pathName(mesh)),
+        interior: (mesh) => /interior 2|inside stickers|seets|seats nuts|seat belt|int mirror|sreerean wheel|material 009/.test(pathName(mesh)),
+        body: (mesh) => /body 0|carbon fiber 0|viper 0|side mirrors|hood black/.test(pathName(mesh)),
+        glass: (mesh) => /engine glass|laferrari glasses 0|head lights glasses/.test(pathName(mesh)),
+        headlights: (mesh) => /front headlights/.test(pathName(mesh)),
+        taillights: (mesh) => /tail lights|rear headlights|red light|run lights/.test(pathName(mesh)),
+        grilles: (mesh) => /black 2|black 005/.test(pathName(mesh)),
+        chrome: (mesh) => /breake lights chrom|breake chrome 2|laferrari chrome 0|chrome0|rear logo|rear something/.test(pathName(mesh)),
+      };
+      window.partMeshCounts = Object.fromEntries(Object.entries(filters).map(([keyName, filter]) => [
+        keyName,
+        sourceMeshes.filter(filter).length,
+      ]));
+      window.partMeshBounds = Object.fromEntries(Object.entries(filters).map(([keyName, filter]) => [
+        keyName,
+        sourceMeshes.filter(filter).map((mesh) => {
+          const bounds = new THREE.Box3().setFromObject(mesh);
+          return {
+            name: pathName(mesh),
+            center: bounds.getCenter(new THREE.Vector3()).toArray().map((value) => Number(value.toFixed(2))),
+            size: bounds.getSize(new THREE.Vector3()).toArray().map((value) => Number(value.toFixed(2))),
+          };
+        }),
+      ]));
+
+      function addMetalCylinder(group, radiusTop, radiusBottom, length, material, position, axis = 'y', radial = 32) {
+        const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radiusTop, radiusBottom, length, radial), material);
+        if (axis === 'x') mesh.rotation.z = Math.PI / 2;
+        if (axis === 'z') mesh.rotation.x = Math.PI / 2;
+        mesh.position.set(...position);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        group.add(mesh);
+        return mesh;
+      }
+
+      function addBox(group, dimensions, material, position, rotation = [0, 0, 0]) {
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(...dimensions), material);
+        mesh.position.set(...position);
+        mesh.rotation.set(...rotation);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        group.add(mesh);
+        return mesh;
+      }
+
+      function makeChassisTub() {
+        const group = new THREE.Group();
+        const alloy = new THREE.MeshStandardMaterial({ color: '#687783', metalness: 0.82, roughness: 0.3 });
+        const carbon = new THREE.MeshStandardMaterial({ color: '#171c22', metalness: 0.52, roughness: 0.37 });
+        const red = new THREE.MeshStandardMaterial({ color: '#8f1823', metalness: 0.4, roughness: 0.3 });
+        const steel = new THREE.MeshStandardMaterial({ color: '#bdc6cf', metalness: 0.94, roughness: 0.2 });
+        addBox(group, [1.72, 0.16, 3.25], carbon, [0, 0, 0]);
+        addBox(group, [1.24, 0.34, 1.18], alloy, [0, 0.22, 0.05]);
+        for (const side of [-1, 1]) {
+          addBox(group, [0.15, 0.43, 2.85], alloy, [side * 0.72, 0.2, 0.04]);
+          addBox(group, [0.2, 0.58, 0.2], red, [side * 0.58, 0.2, -1.2], [0.12, 0, side * 0.18]);
+          addBox(group, [0.2, 0.6, 0.2], red, [side * 0.58, 0.2, 1.18], [-0.1, 0, side * 0.18]);
+          addBox(group, [0.12, 0.18, 0.92], steel, [side * 0.54, 0.36, 0.02], [0, 0, side * 0.16]);
+        }
+        for (const z of [-1.16, -0.56, 0.58, 1.14]) {
+          addBox(group, [1.22, 0.1, 0.13], alloy, [0, 0.25, z]);
+        }
+        addBox(group, [0.92, 0.2, 0.58], carbon, [0, 0.37, -0.72], [0.14, 0, 0]);
+        addBox(group, [0.92, 0.2, 0.58], carbon, [0, 0.37, 0.72], [-0.14, 0, 0]);
+        for (const side of [-1, 1]) {
+          for (const z of [-1.18, -0.55, 0.55, 1.18]) {
+            const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.035, 12), steel);
+            bolt.position.set(side * 0.73, 0.44, z);
+            bolt.castShadow = true;
+            group.add(bolt);
+          }
+        }
+        return group;
+      }
+
+      function makeCoilover() {
+        const group = new THREE.Group();
+        const steel = new THREE.MeshStandardMaterial({ color: '#aeb9c4', metalness: 0.92, roughness: 0.2 });
+        const dark = new THREE.MeshStandardMaterial({ color: '#20252d', metalness: 0.72, roughness: 0.27 });
+        const red = new THREE.MeshStandardMaterial({ color: '#ad1723', metalness: 0.52, roughness: 0.22 });
+        const gold = new THREE.MeshStandardMaterial({ color: '#c69342', metalness: 0.88, roughness: 0.22 });
+        addMetalCylinder(group, 0.12, 0.12, 1.0, dark, [0, 0, 0]);
+        addMetalCylinder(group, 0.052, 0.052, 0.67, steel, [0, 0.12, 0]);
+        for (const y of [-0.53, -0.45, 0.48]) {
+          addMetalCylinder(group, 0.17, 0.17, 0.055, gold, [0, y, 0]);
+        }
+        const points = [];
+        const turns = 9;
+        const count = 280;
+        for (let i = 0; i <= count; i += 1) {
+          const t = i / count;
+          const angle = t * turns * Math.PI * 2;
+          points.push(new THREE.Vector3(Math.cos(angle) * 0.19, -0.43 + t * 0.84, Math.sin(angle) * 0.19));
+        }
+        const spring = new THREE.Mesh(
+          new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 380, 0.035, 10, false),
+          red,
+        );
+        spring.castShadow = true;
+        spring.receiveShadow = true;
+        group.add(spring);
+        for (const y of [-0.75, 0.73]) {
+          const mount = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.055, 12, 36), steel);
+          mount.rotation.x = Math.PI / 2;
+          mount.position.y = y;
+          mount.castShadow = true;
+          group.add(mount);
+        }
+        return group;
+      }
+
+      function makeTurbo() {
+        const group = new THREE.Group();
+        const housing = new THREE.MeshStandardMaterial({ color: '#878f98', metalness: 0.94, roughness: 0.21 });
+        const dark = new THREE.MeshStandardMaterial({ color: '#343b43', metalness: 0.88, roughness: 0.24 });
+        const brass = new THREE.MeshStandardMaterial({ color: '#c38e43', metalness: 0.9, roughness: 0.2 });
+        const alloy = new THREE.MeshStandardMaterial({ color: '#d9dfe5', metalness: 0.96, roughness: 0.16 });
+        addMetalCylinder(group, 0.56, 0.45, 0.28, housing, [-0.18, 0, 0], 'x', 64);
+        addMetalCylinder(group, 0.39, 0.47, 0.42, dark, [0.2, 0, 0], 'x', 48);
+        addMetalCylinder(group, 0.31, 0.31, 0.08, alloy, [0.46, 0, 0], 'x', 48);
+        addMetalCylinder(group, 0.14, 0.14, 0.16, brass, [0.52, 0, 0], 'x', 32);
+        const inlet = new THREE.Mesh(new THREE.TorusGeometry(0.47, 0.065, 16, 64), alloy);
+        inlet.position.x = -0.34;
+        inlet.rotation.y = Math.PI / 2;
+        inlet.castShadow = true;
+        group.add(inlet);
+        for (let i = 0; i < 10; i += 1) {
+          const angle = (i / 10) * Math.PI * 2;
+          const blade = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.018, 0.07), alloy);
+          blade.position.set(0.57, Math.cos(angle) * 0.22, Math.sin(angle) * 0.22);
+          blade.rotation.x = angle;
+          blade.rotation.z = 0.25;
+          group.add(blade);
+        }
+        const flange = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.12, 0.48), dark);
+        flange.position.set(0, -0.49, 0);
+        flange.castShadow = true;
+        group.add(flange);
+        return group;
+      }
+
+      function makeIntake() {
+        const group = new THREE.Group();
+        const carbon = new THREE.MeshStandardMaterial({ color: '#20252b', metalness: 0.48, roughness: 0.35 });
+        const alloy = new THREE.MeshStandardMaterial({ color: '#b9c2cc', metalness: 0.92, roughness: 0.2 });
+        const rubber = new THREE.MeshStandardMaterial({ color: '#111419', metalness: 0.08, roughness: 0.61 });
+        const filter = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.49, 0.64, 48), rubber);
+        filter.rotation.z = Math.PI / 2;
+        filter.position.x = -0.45;
+        filter.castShadow = true;
+        group.add(filter);
+        for (let i = 0; i < 30; i += 1) {
+          const angle = (i / 30) * Math.PI * 2;
+          const pleat = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.025, 0.018), alloy);
+          pleat.position.set(-0.45, Math.cos(angle) * 0.35, Math.sin(angle) * 0.35);
+          pleat.rotation.x = angle;
+          group.add(pleat);
+        }
+        const pipeCurve = new THREE.CatmullRomCurve3([
+          new THREE.Vector3(-0.16, 0, 0),
+          new THREE.Vector3(0.18, 0, 0),
+          new THREE.Vector3(0.42, 0.12, 0),
+          new THREE.Vector3(0.48, 0.35, 0),
+          new THREE.Vector3(0.55, 0.42, 0),
+        ]);
+        const pipe = new THREE.Mesh(new THREE.TubeGeometry(pipeCurve, 48, 0.14, 32, false), carbon);
+        pipe.castShadow = true;
+        pipe.receiveShadow = true;
+        group.add(pipe);
+        addMetalCylinder(group, 0.18, 0.18, 0.34, carbon, [-0.15, 0, 0], 'x', 48);
+        for (const position of [[-0.25, 0, 0], [0.18, 0.03, 0], [0.54, 0.38, 0]]) {
+          const clamp = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.018, 10, 40), alloy);
+          clamp.position.set(...position);
+          clamp.rotation.y = Math.PI / 2;
+          group.add(clamp);
+        }
+        return group;
+      }
+
+      function makeDifferential() {
+        const group = new THREE.Group();
+        const caseMaterial = new THREE.MeshStandardMaterial({ color: '#737d87', metalness: 0.86, roughness: 0.29 });
+        const coverMaterial = new THREE.MeshStandardMaterial({ color: '#20262d', metalness: 0.72, roughness: 0.3 });
+        const steel = new THREE.MeshStandardMaterial({ color: '#c0c7ce', metalness: 0.95, roughness: 0.18 });
+        const caseMesh = new THREE.Mesh(new THREE.IcosahedronGeometry(0.58, 2), caseMaterial);
+        caseMesh.scale.set(1.22, 0.88, 0.72);
+        caseMesh.castShadow = true;
+        caseMesh.receiveShadow = true;
+        group.add(caseMesh);
+        const cover = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.46, 0.16, 48), coverMaterial);
+        cover.rotation.x = Math.PI / 2;
+        cover.position.z = 0.42;
+        cover.castShadow = true;
+        group.add(cover);
+        for (const side of [-1, 1]) {
+          addMetalCylinder(group, 0.14, 0.14, 0.75, steel, [side * 0.91, 0, 0], 'x', 32);
+          const flange = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.08, 40), caseMaterial);
+          flange.rotation.z = Math.PI / 2;
+          flange.position.x = side * 0.63;
+          flange.castShadow = true;
+          group.add(flange);
+        }
+        for (let i = 0; i < 12; i += 1) {
+          const a = i / 12 * Math.PI * 2;
+          const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.06, 8), steel);
+          bolt.position.set(Math.cos(a) * 0.34, Math.sin(a) * 0.34, 0.52);
+          bolt.castShadow = true;
+          group.add(bolt);
+        }
+        return group;
+      }
+
+      function makeExhaustTips() {
+        const group = new THREE.Group();
+        const pipe = new THREE.MeshStandardMaterial({ color: '#3a4047', metalness: 0.82, roughness: 0.28 });
+        const polished = new THREE.MeshStandardMaterial({ color: '#d4dbe1', metalness: 0.96, roughness: 0.15 });
+        const dark = new THREE.MeshStandardMaterial({ color: '#11151a', metalness: 0.58, roughness: 0.34 });
+        for (const x of [-0.43, 0, 0.43]) {
+          addMetalCylinder(group, 0.13, 0.18, 0.5, pipe, [x, 0, 0], 'z', 48);
+          addMetalCylinder(group, 0.15, 0.13, 0.18, polished, [x, 0, 0.27], 'z', 48);
+          const lip = new THREE.Mesh(new THREE.TorusGeometry(0.145, 0.025, 14, 48), polished);
+          lip.position.set(x, 0, 0.36);
+          lip.castShadow = true;
+          group.add(lip);
+          const bore = new THREE.Mesh(new THREE.CircleGeometry(0.12, 48), dark);
+          bore.position.set(x, 0, 0.355);
+          group.add(bore);
+        }
+        addBox(group, [1.18, 0.13, 0.18], dark, [0, -0.2, -0.2]);
+        addBox(group, [0.26, 0.18, 0.22], polished, [0, 0, -0.31]);
+        return group;
+      }
+
+      function makeBattery() {
+        const group = new THREE.Group();
+        const caseMaterial = new THREE.MeshStandardMaterial({ color: '#202a31', metalness: 0.3, roughness: 0.39 });
+        const red = new THREE.MeshStandardMaterial({ color: '#a21c27', metalness: 0.48, roughness: 0.26 });
+        const steel = new THREE.MeshStandardMaterial({ color: '#cad0d6', metalness: 0.94, roughness: 0.19 });
+        const black = new THREE.MeshStandardMaterial({ color: '#11171c', metalness: 0.22, roughness: 0.48 });
+        const body = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.82, 0.78), caseMaterial);
+        body.position.y = 0.06;
+        body.castShadow = true;
+        body.receiveShadow = true;
+        group.add(body);
+        const lid = new THREE.Mesh(new THREE.BoxGeometry(1.39, 0.16, 0.82), red);
+        lid.position.y = 0.54;
+        lid.castShadow = true;
+        group.add(lid);
+        for (const x of [-0.43, 0.43]) {
+          const post = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.105, 0.14, 24), steel);
+          post.position.set(x, 0.68, 0);
+          post.castShadow = true;
+          group.add(post);
+          const terminal = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.13, 0.06, 24), x < 0 ? red : steel);
+          terminal.position.set(x, 0.78, 0);
+          terminal.castShadow = true;
+          group.add(terminal);
+        }
+        addBox(group, [0.68, 0.36, 0.025], black, [0, 0.06, 0.405]);
+        for (let i = 0; i < 4; i += 1) {
+          const rib = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.23, 0.012), steel);
+          rib.position.set(-0.23 + i * 0.15, 0.06, 0.425);
+          rib.castShadow = true;
+          group.add(rib);
+        }
+        for (const x of [-0.6, 0.6]) {
+          for (const z of [-0.3, 0.3]) {
+            const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.025, 12), steel);
+            bolt.rotation.x = Math.PI / 2;
+            bolt.position.set(x, 0.28, z);
+            bolt.castShadow = true;
+            group.add(bolt);
+          }
+        }
+        return group;
+      }
+
+      const studioParts = {
+        chassis: makeChassisTub,
+        chrome: makeExhaustTips,
+        coilover: makeCoilover,
+        turbo: makeTurbo,
+        intake: makeIntake,
+        differential: makeDifferential,
+        battery: makeBattery,
+      };
+      const categoryViews = {
+        chassis: [3.5, 2.2, 4.5],
+        wheel: [5.6, 1.5, 1.1],
+        brake: [4.3, 2.8, 5.1],
+        interior: [3.3, 2.8, 4.6],
+        body: [4.6, 3.3, 5.0],
+        glass: [4.5, 3.1, 4.8],
+        headlights: [3.0, 1.7, -4.6],
+        taillights: [3.1, 1.9, 4.5],
+        grilles: [3.5, 1.7, -4.6],
+        chrome: [3.6, 2.0, 4.7],
+        coilover: [3.3, 2.8, 4.3],
+        turbo: [3.7, 2.7, 4.8],
+        intake: [3.7, 2.8, 4.8],
+        differential: [3.8, 2.8, 4.8],
+        battery: [3.5, 2.7, 4.8],
+      };
+      const photoGroups = {
+        '/parts/product-chassis.jpg': { factory: studioParts.chassis, view: 'chassis', fit: 1.26 },
+        '/parts/product-wheel.jpg': { filter: filters.wheel, view: 'wheel', fit: 1.08 },
+        '/parts/product-brake.jpg': { filter: filters.brake, view: 'brake', fit: 1.08 },
+        '/parts/product-interior.jpg': { filter: filters.interior, view: 'interior', fit: 1.24 },
+        '/parts/product-body.jpg': { filter: filters.body, view: 'body', fit: 1.02 },
+        '/parts/product-glass.jpg': { filter: filters.glass, view: 'glass', fit: 1.22 },
+        '/parts/product-headlights.jpg': { filter: filters.headlights, view: 'headlights', fit: 1.08 },
+        '/parts/product-taillights.jpg': { filter: filters.taillights, view: 'taillights', fit: 1.06 },
+        '/parts/product-grilles.jpg': { filter: filters.grilles, view: 'grilles', fit: 1.06 },
+        '/parts/product-chrome.jpg': { factory: studioParts.chrome, view: 'chrome', fit: 1.08 },
+        '/parts/product-coilover.jpg': { factory: studioParts.coilover, view: 'coilover', fit: 1.08 },
+        '/parts/product-turbo.jpg': { factory: studioParts.turbo, view: 'turbo', fit: 1.08 },
+        '/parts/product-intake.jpg': { factory: studioParts.intake, view: 'intake', fit: 1.08 },
+        '/parts/product-differential.jpg': { factory: studioParts.differential, view: 'differential', fit: 1.08 },
+        '/parts/product-battery.jpg': { factory: studioParts.battery, view: 'battery', fit: 1.08 },
+      };
+
+      window.renderPartPhotos = async () => {
+        const images = {};
+        for (const [filename, settings] of Object.entries(photoGroups)) {
+          document.querySelector('#status').textContent = `Rendering ${filename}…`;
+          const group = new THREE.Group();
+          if (settings.factory) {
+            group.add(settings.factory());
+          } else {
+            let selected = sourceMeshes.filter(settings.filter);
+            if (selected.length === 0) throw new Error(`No matching GLB meshes for ${filename}`);
+            for (const mesh of selected) {
+              const copy = mesh.clone();
+              copy.geometry = mesh.geometry.clone().applyMatrix4(mesh.matrixWorld);
+              copy.position.set(0, 0, 0);
+              copy.rotation.set(0, 0, 0);
+              copy.scale.set(1, 1, 1);
+              copy.matrix.identity();
+              copy.matrixWorld.identity();
+              copy.material = Array.isArray(mesh.material)
+                ? mesh.material.map((material) => material.clone())
+                : mesh.material.clone();
+              copy.castShadow = true;
+              copy.receiveShadow = true;
+              group.add(copy);
+            }
+          }
+          group.updateMatrixWorld(true);
+          const bounds = new THREE.Box3().setFromObject(group);
+          if (bounds.isEmpty()) throw new Error(`Empty product geometry for ${filename}`);
+          const center = bounds.getCenter(new THREE.Vector3());
+          const size = bounds.getSize(new THREE.Vector3());
+          group.position.set(-center.x, -bounds.min.y + 0.04, -center.z);
+          scene.add(group);
+          const direction = new THREE.Vector3(...categoryViews[settings.view]).normalize();
+          const normalizedCenter = new THREE.Vector3(0, size.y * 0.48, 0);
+          const sphere = bounds.getBoundingSphere(new THREE.Sphere());
+          const distance = sphere.radius / Math.sin(THREE.MathUtils.degToRad(camera.fov / 2)) * settings.fit;
+          camera.position.copy(normalizedCenter).addScaledVector(direction, distance);
+          camera.lookAt(normalizedCenter);
+          camera.near = Math.max(0.01, distance / 100);
+          camera.far = distance * 20 + 20;
+          camera.updateProjectionMatrix();
+          renderer.render(scene, camera);
+          await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          images[filename] = renderer.domElement.toDataURL('image/jpeg', 0.94).split(',')[1];
+          scene.remove(group);
+          group.traverse((object) => {
+            object.geometry?.dispose();
+            const materials = Array.isArray(object.material) ? object.material : [object.material];
+            materials.forEach((material) => material?.dispose());
+          });
+        }
+        document.querySelector('#status').textContent = 'Product renders complete.';
+        return images;
+      };
+
+      document.querySelector('#status').textContent = `Ready; model meshes: ${sourceMeshes.length}.`;
+    </script>
+  </body>
+</html>

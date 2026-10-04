@@ -144,8 +144,183 @@ tbody tr:hover { background: rgba(255,255,255,0.03); }
 .preview { max-height: 130px; width: auto; border-radius: 10px; border: 1px solid rgba(255,255,255,0.14); }
 .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); z-index: 300; background: #fff; color: #0a0a0b; font-weight: 700; font-size: 14px; padding: 12px 22px; border-radius: 999px; box-shadow: 0 14px 40px rgba(0,0,0,0.5); }
 
+/* ---------------- PRODUCT EXPLORER ---------------- */
+.inspector-overlay { position: fixed; inset: 0; z-index: 500; display: grid; place-items: center; padding: 22px; overflow-y: auto; background: rgba(3,3,4,0.82); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.product-inspector { width: min(1120px, 100%); max-height: min(900px, 92vh); overflow: hidden; display: flex; flex-direction: column; background: #101114; border: 1px solid rgba(255,255,255,0.14); border-radius: 22px; box-shadow: 0 36px 120px rgba(0,0,0,0.65); }
+.inspector-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 21px 28px; border-bottom: 1px solid rgba(255,255,255,0.09); }
+.inspector-header h2 { font-size: clamp(18px, 2vw, 24px); letter-spacing: -0.02em; }
+.inspector-kicker { color: rgba(255,255,255,0.48); font-size: 10px; line-height: 1.4; font-weight: 700; letter-spacing: 0.16em; margin-bottom: 7px; }
+.inspector-close { width: 42px; height: 42px; flex: none; display: grid; place-items: center; border: 1px solid rgba(255,255,255,0.18); border-radius: 50%; background: rgba(255,255,255,0.04); font-size: 26px; line-height: 1; cursor: pointer; transition: background .2s, transform .2s; }
+.inspector-close:hover { background: rgba(255,255,255,0.14); transform: rotate(90deg); }
+.inspector-layout { min-height: 0; flex: 1; display: grid; grid-template-columns: 1.08fr 0.92fr; }
+.inspector-visual-column { min-width: 0; padding: 24px 26px 20px; border-right: 1px solid rgba(255,255,255,0.09); display: flex; flex-direction: column; gap: 14px; }
+.inspector-stage { min-height: 300px; flex: 1; position: relative; display: grid; place-items: center; overflow: hidden; isolation: isolate; border: 1px solid rgba(255,255,255,0.09); border-radius: 16px; background-color: #0c0e10; background-image: linear-gradient(rgba(210,225,245,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(210,225,245,.035) 1px, transparent 1px), radial-gradient(ellipse at 50% 43%, #282a30 0%, #17181c 46%, #0c0d0f 100%); background-size: 22px 22px, 22px 22px, auto; perspective: 1000px; touch-action: none; cursor: grab; }
+.inspector-stage:active { cursor: grabbing; }
+.inspector-stage:focus-visible { outline: 2px solid #d1a936; outline-offset: 3px; }
+.inspector-stage::after { content: ""; position: absolute; z-index: -1; left: 18%; right: 18%; bottom: 12%; height: 14px; background: #000; opacity: .52; filter: blur(13px); border-radius: 50%; }
+.inspector-stage-glow { position: absolute; width: 70%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, rgba(225,232,247,0.13), transparent 68%); filter: blur(8px); }
+.inspector-product { position: relative; z-index: 1; width: min(88%, 500px); transform-style: preserve-3d; will-change: transform; filter: drop-shadow(0 24px 25px rgba(0,0,0,0.44)); pointer-events: none; }
+.inspector-product img { width: 100%; max-height: 365px; object-fit: contain; user-select: none; pointer-events: none; mix-blend-mode: screen; }
+.inspector-image-fallback { min-height: 230px; display: grid; place-items: center; color: rgba(255,255,255,0.72); text-transform: uppercase; letter-spacing: .16em; font-weight: 700; }
+.inspector-stage-label { position: absolute; z-index: 2; top: 16px; left: 17px; display: flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.55); font-size: 9px; font-weight: 700; letter-spacing: .12em; }
+.inspector-stage-label i { width: 6px; height: 6px; border-radius: 50%; background: #b7d8ff; box-shadow: 0 0 12px #90c7ff; }
+.inspector-stage-hint { position: absolute; left: 17px; bottom: 17px; color: rgba(255,255,255,0.4); font-size: 8px; letter-spacing: .12em; }
+.inspector-view-controls { position: absolute; z-index: 4; right: 12px; bottom: 11px; display: flex; align-items: center; gap: 4px; padding: 4px; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: rgba(8,9,11,.8); backdrop-filter: blur(9px); }
+.inspector-view-controls button { min-width: 28px; height: 27px; padding: 0 7px; display: grid; place-items: center; border: 1px solid transparent; border-radius: 5px; color: rgba(255,255,255,.84); background: transparent; font-size: 15px; line-height: 1; cursor: pointer; transition: border-color .2s, background .2s; }
+.inspector-view-controls button:hover { border-color: rgba(255,255,255,.16); background: rgba(255,255,255,.1); }
+.inspector-view-controls button:last-child { padding: 0 8px; color: #e8c344; font-size: 8px; font-weight: 700; letter-spacing: .08em; }
+.inspector-view-controls > span { min-width: 34px; color: rgba(255,255,255,.48); font-size: 9px; text-align: center; font-variant-numeric: tabular-nums; }
+.inspector-hotspot { position: absolute; z-index: 3; top: 48%; left: 52%; display: flex; align-items: center; animation: inspector-pulse .45s ease-out both; pointer-events: none; }
+.inspector-hotspot > span { width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid rgba(220,235,255,.8); border-radius: 50%; color: #fff; background: rgba(10,13,18,.75); box-shadow: 0 0 20px rgba(154,202,255,.32); font-size: 9px; font-weight: 700; }
+.inspector-hotspot > i { width: clamp(14px, 4vw, 48px); height: 1px; background: rgba(220,235,255,.7); }
+.inspector-hotspot > b { max-width: 120px; padding: 6px 9px; border: 1px solid rgba(255,255,255,.14); border-radius: 7px; color: rgba(255,255,255,.88); background: rgba(10,11,14,.78); font-size: 9px; line-height: 1.3; font-weight: 600; backdrop-filter: blur(8px); }
+@keyframes inspector-pulse { from { opacity: 0; transform: scale(.92) translateY(5px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+.inspector-product-meta { display: grid; grid-template-columns: .75fr .6fr 1fr; gap: 10px; }
+.inspector-product-meta > div { min-width: 0; display: flex; flex-direction: column; gap: 5px; padding: 11px 12px; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; background: rgba(255,255,255,0.025); }
+.inspector-product-meta span { color: rgba(255,255,255,0.42); font-size: 9px; text-transform: uppercase; letter-spacing: .12em; }
+.inspector-product-meta strong { overflow: hidden; color: rgba(255,255,255,.88); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.inspector-disclaimer { color: rgba(255,255,255,0.38); font-size: 10px; line-height: 1.5; }
+.inspector-details { position: relative; min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: 25px 26px 22px; }
+.inspector-intro { flex: none; padding-bottom: 17px; }
+.inspector-intro h3 { margin-bottom: 8px; font-size: clamp(22px, 2.4vw, 30px); line-height: 1.05; letter-spacing: -.035em; }
+.inspector-intro > p:last-child { max-width: 360px; color: rgba(255,255,255,.56); font-size: 12px; line-height: 1.6; }
+.inspector-progress { position: absolute; left: 39px; width: 2px; top: 145px; bottom: 111px; background: rgba(255,255,255,.08); }
+.inspector-progress span { display: block; width: 100%; background: #dbe9ff; box-shadow: 0 0 12px rgba(176,211,255,.5); transition: height .25s ease; }
+.inspector-steps { min-height: 0; max-height: min(40vh, 340px); flex: 1; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; padding: 0 5px 0 0; scroll-behavior: smooth; }
+.inspector-step { width: 100%; min-height: 86px; display: grid; grid-template-columns: 34px 1fr 16px; align-items: start; gap: 11px; padding: 15px 10px 15px 13px; border: 1px solid transparent; border-radius: 11px; text-align: left; background: transparent; cursor: pointer; transition: background .2s, border-color .2s; }
+.inspector-step:hover { background: rgba(255,255,255,.04); }
+.inspector-step.is-active { border-color: rgba(255,255,255,.12); background: linear-gradient(100deg, rgba(255,255,255,.075), rgba(255,255,255,.018)); }
+.inspector-step-number { padding-top: 2px; color: rgba(255,255,255,.32); font-size: 10px; font-variant-numeric: tabular-nums; letter-spacing: .08em; }
+.inspector-step.is-active .inspector-step-number { color: #d9e9ff; }
+.inspector-step-copy { display: flex; flex-direction: column; gap: 5px; }
+.inspector-step-copy strong { color: rgba(255,255,255,.9); font-size: 12px; }
+.inspector-step-copy > span { color: rgba(255,255,255,.48); font-size: 10px; line-height: 1.5; }
+.inspector-step-mark { padding-top: 1px; color: rgba(255,255,255,.24); font-size: 12px; transition: color .2s, transform .2s; }
+.inspector-step.is-active .inspector-step-mark { color: #fff; transform: translate(2px,-2px); }
+.inspector-actions { flex: none; display: flex; flex-direction: column; align-items: flex-start; gap: 9px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,.09); }
+.inspector-actions > span { color: rgba(255,255,255,.4); font-size: 10px; }
+.inspector-actions .btn-glass { font-size: 10px; padding: 11px 14px; }
+
+/* ---------------- 3D CAR SHOWROOM ---------------- */
+.car-showroom { position: relative; height: min(880px, calc(100svh - 94px)); min-height: 680px; overflow: hidden; isolation: isolate; border-bottom: 1px solid #222c38; background: #07090c; }
+.car-showroom-loading { min-height: min(880px, calc(100svh - 94px)); display: grid; place-items: center; border-bottom: 1px solid #222c38; background: #07090c; color: #ffd21f; font: 10px 'IBM Plex Mono', Consolas, monospace; letter-spacing: .18em; }
+.car-showroom-canvas { position: absolute; inset: 0; z-index: 0; }
+.car-showroom-canvas canvas { display: block; }
+.car-showroom-fade-top, .car-showroom-fade-bottom { position: absolute; z-index: 1; inset-inline: 0; pointer-events: none; }
+.car-showroom-fade-top { top: 0; height: 170px; background: linear-gradient(#07090cdd, transparent); }
+.car-showroom-fade-bottom { bottom: 0; height: 160px; background: linear-gradient(transparent, #07090cee); }
+.jarv-hero-copy { position: absolute; z-index: 3; top: 54px; left: max(32px, calc((100vw - 1320px) / 2)); width: min(440px, 42vw); pointer-events: none; }
+.jarv-live { display: inline-flex; align-items: center; gap: 9px; padding: 8px 11px; border: 1px solid #28323d; background: #0a0d11cc; color: #a4b1be; font: 10px 'IBM Plex Mono', Consolas, monospace; letter-spacing: .16em; }
+.jarv-live i { width: 7px; height: 7px; border-radius: 50%; background: #45d6a4; box-shadow: 0 0 12px #45d6a4; }
+.jarv-kicker { margin-top: 24px; color: #ffd21f; font: 10px 'IBM Plex Mono', Consolas, monospace; letter-spacing: .24em; }
+.jarv-hero-copy h1 { margin-top: 9px; color: #e9eef4; font: 700 clamp(48px, 6.2vw, 84px)/.88 'Chakra Petch', 'Archivo', sans-serif; letter-spacing: -.045em; }
+.jarv-hero-copy h1 span { color: #ffd21f; }
+.jarv-description { max-width: 390px; margin-top: 18px; color: #9aa7b4; font-size: 13px; line-height: 1.65; }
+.jarv-browse-button { display: inline-flex; align-items: center; gap: 20px; margin-top: 19px; padding: 12px 16px; pointer-events: auto; background: #ffd21f; color: #07090c; font: 700 11px 'Chakra Petch', 'Archivo', sans-serif; letter-spacing: .12em; transition: transform .2s, background .2s; }
+.jarv-browse-button:hover { transform: translateY(-2px); background: #ffe16a; color: #07090c; }
+.jarv-sequence { position: absolute; z-index: 3; top: 55px; right: max(32px, calc((100vw - 1320px) / 2)); width: min(310px, 27vw); padding: 15px; border: 1px solid #26313c; background: #0a0d11d9; backdrop-filter: blur(10px); }
+.jarv-sequence-head, .jarv-sequence-foot { display: flex; justify-content: space-between; gap: 10px; font: 9px 'IBM Plex Mono', Consolas, monospace; letter-spacing: .1em; }
+.jarv-sequence-head { color: #718090; }
+.jarv-sequence-head strong { overflow: hidden; color: #45d6a4; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.jarv-sequence-head strong.is-exploded { color: #ff786f; }
+.jarv-progress { height: 3px; margin-top: 12px; background: #1d2731; }
+.jarv-progress span { display: block; height: 100%; background: #ffd21f; transition: width .18s linear; }
+.jarv-sequence-foot { margin-top: 8px; color: #627181; }
+.jarv-sequence-foot span:last-child { color: #e9eef4; }
+.jarv-part-list { position: absolute; z-index: 3; bottom: 50px; left: max(32px, calc((100vw - 1320px) / 2)); width: 250px; padding: 13px 15px; border: 1px solid #26313c; background: #0a0d11d9; backdrop-filter: blur(10px); }
+.jarv-part-list > p { margin-bottom: 8px; color: #718090; font: 9px 'IBM Plex Mono', Consolas, monospace; letter-spacing: .14em; }
+.jarv-part-list ol { max-height: 236px; overflow: auto; list-style: none; }
+.jarv-part-list button { width: 100%; display: grid; grid-template-columns: 8px 22px 1fr; align-items: center; gap: 8px; padding: 5px 2px; color: #758393; text-align: left; background: transparent; font: 10px 'IBM Plex Mono', Consolas, monospace; cursor: pointer; transition: color .18s; }
+.jarv-part-list button:hover, .jarv-part-list button.is-selected { color: #ffd21f; }
+.jarv-part-list button i { width: 6px; height: 6px; border-radius: 50%; background: #34414d; }
+.jarv-part-list button i.is-seated { background: #45d6a4; }
+.jarv-part-list button i.is-moving { background: #ffd21f; box-shadow: 0 0 9px #ffd21f; }
+.jarv-part-list button span { color: #536171; font-size: 9px; }
+.jarv-controls { position: absolute; z-index: 4; right: max(32px, calc((100vw - 1320px) / 2)); bottom: 44px; display: flex; gap: 7px; }
+.jarv-controls button { min-height: 40px; padding: 0 13px; border: 1px solid #293440; background: #0a0d11e8; color: #a8b2bd; font: 600 10px 'Chakra Petch', 'Archivo', sans-serif; letter-spacing: .1em; cursor: pointer; transition: border-color .2s, color .2s, background .2s; }
+.jarv-controls button:hover, .jarv-controls button.is-on { border-color: #ffd21f88; color: #ffd21f; }
+.jarv-controls button:first-child { width: 40px; padding: 0; font-size: 21px; }
+.jarv-controls button.jarv-rebuild { border-color: #ffd21f; background: #ffd21f; color: #07090c; }
+.jarv-controls button.jarv-rebuild:hover { background: #ffe16a; }
+.jarv-explode-scrubber { position: absolute; z-index: 4; right: max(32px, calc((100vw - 1320px) / 2)); bottom: 94px; display: flex; width: min(310px, 27vw); align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #26313c; background: #0a0d11e8; color: #788594; font: 8px 'IBM Plex Mono', Consolas, monospace; letter-spacing: .1em; }
+.jarv-explode-scrubber input { width: 100%; height: 3px; accent-color: #ffd21f; cursor: ew-resize; }
+.jarv-explode-scrubber input:disabled { cursor: wait; opacity: .45; }
+.jarv-canvas-hint { position: absolute; z-index: 2; left: 50%; bottom: 17px; transform: translateX(-50%); color: #788594; white-space: nowrap; font: 9px 'IBM Plex Mono', Consolas, monospace; letter-spacing: .15em; pointer-events: none; }
+.jarv-model-credit { position: absolute; z-index: 2; right: 16px; bottom: 12px; color: #586674; font: 8px 'IBM Plex Mono', Consolas, monospace; letter-spacing: .1em; }
+.jarv-loader { position: absolute; z-index: 5; left: 50%; top: 50%; width: min(270px, 70vw); transform: translate(-50%, -50%); padding: 14px; border: 1px solid #293440; background: #0a0d11ee; color: #aab5c0; font: 9px 'IBM Plex Mono', Consolas, monospace; letter-spacing: .12em; }
+.jarv-loader > div:first-child { display: flex; justify-content: space-between; }
+.jarv-loader > div:first-child span:last-child { color: #ffd21f; }
+.jarv-loader-track { height: 3px; margin-top: 10px; background: #1d2731; }
+.jarv-loader-track span { display: block; height: 100%; background: #ffd21f; transition: width .15s; }
+.jarv-model-error { position: absolute; z-index: 4; top: 50%; left: 50%; width: min(370px, calc(100% - 32px)); display: flex; flex-direction: column; gap: 8px; transform: translate(-50%, -50%); padding: 15px; border: 1px solid #71463f; background: #180e0deF; box-shadow: 0 12px 40px #0009; }
+.jarv-model-error strong { color: #ff9a80; font: 700 11px 'IBM Plex Mono', Consolas, monospace; letter-spacing: .12em; }
+.jarv-model-error span { color: #a9aeb3; font-size: 11px; line-height: 1.55; }
+.jarv-inspected { position: absolute; z-index: 5; top: 50%; right: max(32px, calc((100vw - 1320px) / 2)); width: min(315px, 28vw); max-height: calc(100% - 170px); overflow: auto; transform: translateY(-50%); padding: 15px; border: 1px solid #394653; background: #0a0d11f2; box-shadow: 0 20px 70px #0009; backdrop-filter: blur(14px); }
+.jarv-inspected-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 10px; border-bottom: 1px solid #222c38; color: #ffd21f; font: 9px 'IBM Plex Mono', Consolas, monospace; letter-spacing: .16em; }
+.jarv-inspected-head button { color: #9aa7b4; background: transparent; font-size: 21px; line-height: 1; cursor: pointer; }
+.jarv-inspected-category { margin-top: 12px; color: #8492a0; font: 9px 'IBM Plex Mono', Consolas, monospace; letter-spacing: .14em; text-transform: uppercase; }
+.jarv-inspected h2 { margin-top: 4px; color: #e9eef4; font: 700 21px 'Chakra Petch', 'Archivo', sans-serif; }
+.jarv-inspected-description { margin-top: 8px; color: #9aa7b4; font-size: 11px; line-height: 1.6; }
+.jarv-inspected dl { margin-top: 13px; padding-top: 9px; border-top: 1px solid #222c38; }
+.jarv-inspected dl div { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; font: 9px 'IBM Plex Mono', Consolas, monospace; }
+.jarv-inspected dt { color: #748291; }
+.jarv-inspected dd { color: #dce4eb; text-align: right; }
+.jarv-inspected dl div:last-child dd { color: #45d6a4; }
+.jarv-inspected-price { margin-top: 10px; color: #e9eef4; font: 700 23px 'Chakra Petch', 'Archivo', sans-serif; }
+.jarv-product-link { width: 100%; display: flex; justify-content: space-between; margin-top: 10px; padding: 10px 12px; background: #ffd21f; color: #07090c; font: 700 10px 'Chakra Petch', 'Archivo', sans-serif; letter-spacing: .1em; cursor: pointer; }
+.jarv-product-link:hover { background: #ffe16a; }
+
+/* ---------------- ZIP PARTS CATALOG ---------------- */
+.zip-parts-section { width: 100%; max-width: 1440px; padding-top: 58px; }
+.zip-catalog-heading { display: flex; align-items: end; justify-content: space-between; gap: 26px; }
+.zip-catalog-heading .h1 { margin-bottom: 0; }
+.zip-catalog-heading p { max-width: 580px; margin-top: 12px; color: #91a0af; font-size: 13px; line-height: 1.6; }
+.zip-search { width: min(100%, 280px); flex: none; color: #82909d; font: 9px 'IBM Plex Mono', Consolas, monospace; letter-spacing: .12em; }
+.zip-search input { width: 100%; margin-top: 6px; background: #0a0d11; border: 1px solid #26313c; border-radius: 0; font: 12px 'Archivo', sans-serif; }
+.zip-categories { display: flex; gap: 7px; flex-wrap: wrap; margin: 22px 0; }
+.zip-categories button { padding: 8px 11px; border: 1px solid #26313c; background: #0a0d11; color: #94a1ad; font: 9px 'IBM Plex Mono', Consolas, monospace; letter-spacing: .08em; cursor: pointer; transition: color .18s, border-color .18s, background .18s; }
+.zip-categories button:hover { border-color: #ffd21f88; color: #e9eef4; }
+.zip-categories button.is-active { border-color: #ffd21f; background: #ffd21f; color: #07090c; }
+.zip-product-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.zip-product { min-width: 0; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #26313c; border-radius: 0; background: #0a0d11; transition: border-color .2s, transform .2s; }
+.zip-product:hover { transform: translateY(-3px); border-color: #65717c; }
+.zip-product-visual { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-bottom: 1px solid #26313c; background: #0d1117; }
+.zip-product-visual > img { width: 100%; height: 100%; object-fit: cover; transition: transform .45s; }
+.zip-product:hover .zip-product-visual > img { transform: scale(1.04); }
+.zip-product-art { position: relative; width: 100%; height: 100%; display: grid; place-items: center; overflow: hidden; background: radial-gradient(ellipse at 50% 52%, #18212b 0, #0d1117 68%); color: #9cacbb; }
+.zip-product-art-grid { position: absolute; inset: 0; background-image: linear-gradient(#8695a40d 1px, transparent 1px), linear-gradient(90deg, #8695a40d 1px, transparent 1px); background-size: 16px 16px; }
+.zip-product-art svg { position: relative; width: 74%; max-height: 76%; filter: drop-shadow(0 8px 10px #0008); }
+.zip-product-art > span:not(.zip-product-art-grid) { position: absolute; left: 10px; bottom: 9px; color: #d6e1ea; font: 8px 'IBM Plex Mono', Consolas, monospace; letter-spacing: .15em; }
+.zip-product-art small { position: absolute; top: 10px; left: 10px; padding: 4px 6px; border: 1px solid #26313c; color: #8e9ba8; font: 8px 'IBM Plex Mono', Consolas, monospace; letter-spacing: .1em; }
+.zip-visual-3d { position: absolute; top: 9px; left: 9px; padding: 5px 7px; border: 1px solid #26313c; background: #07090ce8; color: #acb9c4; font: 8px 'IBM Plex Mono', Consolas, monospace; letter-spacing: .13em; cursor: pointer; }
+.zip-visual-3d:hover { border-color: #ffd21f; color: #ffd21f; }
+.zip-stock { position: absolute; bottom: 9px; left: 9px; padding: 4px 6px; background: #0d2a22e8; color: #45d6a4; font: 8px 'IBM Plex Mono', Consolas, monospace; letter-spacing: .1em; }
+.zip-stock.is-low { background: #3b1a16e8; color: #ff756a; }
+.zip-product-content { display: flex; flex: 1; flex-direction: column; padding: 12px; }
+.zip-product-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: #728090; font: 8px 'IBM Plex Mono', Consolas, monospace; letter-spacing: .1em; text-transform: uppercase; }
+.zip-product-meta span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.zip-product-meta span:last-child { flex: none; }
+.zip-product-content h3 { margin-top: 8px; color: #e5ebf1; font: 700 15px/1.25 'Chakra Petch', 'Archivo', sans-serif; }
+.zip-product-content > p { display: -webkit-box; min-height: 48px; overflow: hidden; margin-top: 6px; color: #8d9aaa; font-size: 10px; line-height: 1.55; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+.zip-product-price { margin-top: auto; padding-top: 12px; color: #f0f3f6; font: 700 20px 'Chakra Petch', 'Archivo', sans-serif; }
+.zip-product-actions { display: flex; gap: 7px; margin-top: 9px; }
+.zip-enquire { min-height: 36px; flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 10px; background: #ffd21f; color: #07090c; font: 700 9px 'Chakra Petch', 'Archivo', sans-serif; letter-spacing: .06em; }
+.zip-enquire:hover { background: #ffe16a; color: #07090c; }
+.zip-3d-button { width: 46px; flex: none; border: 1px solid #26313c; background: transparent; color: #8795a3; font: 14px 'IBM Plex Mono', Consolas, monospace; cursor: pointer; }
+.zip-3d-button span { font-size: 8px; }
+.zip-3d-button:hover { border-color: #ffd21f88; color: #ffd21f; }
+.zip-catalog-count { margin-top: 22px; color: #718090; text-align: center; font: 9px 'IBM Plex Mono', Consolas, monospace; letter-spacing: .16em; }
+
 /* ---------------- RESPONSIVE ---------------- */
 @media (max-width: 900px) {
+  .car-showroom { min-height: 720px; }
+  .jarv-hero-copy { left: 22px; width: 40vw; }
+  .jarv-sequence { right: 22px; width: 30vw; }
+  .jarv-part-list { left: 22px; }
+  .jarv-controls { right: 22px; }
+  .jarv-explode-scrubber { right: 22px; width: 30vw; }
+  .jarv-inspected { right: 22px; width: 30vw; }
+  .zip-product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .nav { padding: 24px 22px; }
   .nav-links { display: none; }
   .nav-burger { display: flex; }
@@ -158,6 +333,46 @@ tbody tr:hover { background: rgba(255,255,255,0.03); }
   .footer { padding: 24px 22px; }
 }
 @media (max-width: 700px) {
+  .car-showroom { height: 780px; min-height: 780px; }
+  .jarv-hero-copy { top: 23px; left: 16px; width: min(390px, calc(100% - 32px)); }
+  .jarv-live { padding: 6px 8px; font-size: 8px; }
+  .jarv-kicker { margin-top: 15px; font-size: 8px; }
+  .jarv-hero-copy h1 { font-size: clamp(48px, 13vw, 68px); }
+  .jarv-description { max-width: 340px; margin-top: 10px; font-size: 11px; }
+  .jarv-browse-button { margin-top: 11px; padding: 9px 12px; font-size: 9px; }
+  .jarv-sequence { top: auto; right: 16px; bottom: 216px; left: 16px; width: auto; padding: 10px 12px; }
+  .jarv-sequence.is-hidden-mobile { display: none; }
+  .jarv-part-list { display: none; }
+  .jarv-controls { right: 50%; bottom: 57px; transform: translateX(50%); width: max-content; }
+  .jarv-controls button { min-height: 36px; padding: 0 10px; font-size: 9px; }
+  .jarv-controls button:first-child { width: 36px; }
+  .jarv-explode-scrubber { right: 16px; bottom: 105px; left: 16px; width: auto; }
+  .jarv-canvas-hint { bottom: 20px; font-size: 7px; letter-spacing: .08em; }
+  .jarv-model-credit { display: none; }
+  .jarv-inspected { top: auto; right: 12px; bottom: 160px; left: 12px; width: auto; max-height: 34vh; transform: none; padding: 11px 13px; }
+  .jarv-inspected h2 { font-size: 17px; }
+  .jarv-inspected-description { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  .jarv-inspected dl { margin-top: 7px; }
+  .zip-catalog-heading { align-items: stretch; flex-direction: column; gap: 14px; }
+  .zip-search { width: 100%; }
+  .zip-product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .zip-product-content { padding: 10px; }
+  .zip-product-content h3 { font-size: 13px; }
+  .zip-product-content > p { min-height: 47px; font-size: 9px; }
+  .zip-product-price { font-size: 18px; }
+  .zip-enquire { padding: 0 7px; font-size: 8px; }
+  .zip-3d-button { width: 38px; }
+  .inspector-overlay { padding: 10px; }
+  .product-inspector { max-height: 95vh; border-radius: 16px; overflow-y: auto; }
+  .inspector-header { padding: 16px 18px; }
+  .inspector-layout { display: flex; flex-direction: column; }
+  .inspector-visual-column { border-right: 0; border-bottom: 1px solid rgba(255,255,255,.09); padding: 14px 16px; }
+  .inspector-stage { min-height: 260px; flex: none; }
+  .inspector-product img { max-height: 270px; }
+  .inspector-details { min-height: 460px; padding: 19px 16px 16px; }
+  .inspector-progress { display: none; }
+  .inspector-steps { max-height: 34vh; flex: none; }
+  .inspector-step { min-height: 76px; }
   /* Dashboard table becomes stacked cards so Edit/Delete are always visible */
   table { min-width: 0; display: block; }
   thead { display: none; }
@@ -172,6 +387,9 @@ tbody tr:hover { background: rgba(255,255,255,0.03); }
   tbody td:nth-child(5) { text-align: right; }
 }
 @media (max-width: 520px) {
+  .zip-product-grid { grid-template-columns: 1fr; }
+  .zip-product-content h3 { font-size: 15px; }
+  .zip-product-content > p { min-height: 0; font-size: 10px; }
   .nav { padding: 20px 16px; }
   .logo { font-size: 19px; }
   .btn-nav { padding: 8px 12px; font-size: 12px; }

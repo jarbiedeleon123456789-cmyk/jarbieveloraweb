@@ -2,3 +2,4 @@ node_modules
 dist
 .env
 .env.local
+interactive-3d-car-parts-store/
