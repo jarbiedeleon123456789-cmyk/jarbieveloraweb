@@ -303,6 +303,7 @@ export default function CarShowroom() {
             onPick={onModelPick}
             onReady={onReady}
             autoRotate={autoRotate}
+            assembled={assembled}
             headlightsOn={assembled}
             onOrbitStart={onOrbitStart}
             onOrbitEnd={onOrbitEnd}

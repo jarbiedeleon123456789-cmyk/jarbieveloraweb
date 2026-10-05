@@ -239,12 +239,14 @@ function buildCarModel(scene) {
   };
 }
 
-function RealCarModel({ simRef, reduced, hovered, hoveredPart, selected, selectedPart, onHover, onPick, onReady, headlightsOn }) {
+function RealCarModel({ simRef, reduced, hovered, hoveredPart, selected, selectedPart, onHover, onPick, onReady, headlightsOn, assembled }) {
   const { scene } = useGLTF('/models/nova-r9.glb');
   const camera = useThree((state) => state.camera);
   const controls = useThree((state) => state.controls);
   const previousExplode = useRef(0);
   const frameBounds = useMemo(() => new THREE.Box3(), []);
+  const cameraDirection = useMemo(() => new THREE.Vector3(), []);
+  const targetDirection = useMemo(() => new THREE.Vector3(), []);
   const model = useMemo(() => buildCarModel(scene), [scene]);
   const materials = useMemo(() => model.parts.flatMap(({ group, key, id }) => {
     const result = [];
@@ -309,27 +311,34 @@ function RealCarModel({ simRef, reduced, hovered, hoveredPart, selected, selecte
       group.position.copy(offset).multiplyScalar(factor);
     });
     explodeAmount /= model.parts.length;
-    if (controls && Math.abs(explodeAmount - previousExplode.current) > 0.0005) {
+    if (controls) {
       const viewControls = controls;
       const zoom = Math.min(1, delta * 2.5);
-      frameBounds.copy(model.assembledBounds);
-      model.parts.forEach(({ bounds, offset }, index) => {
-        const factor = partFactors[index];
-        const movement = offset.clone().multiplyScalar(factor);
-        frameBounds.expandByPoint(bounds.min.clone().add(movement));
-        frameBounds.expandByPoint(bounds.max.clone().add(movement));
-      });
-      const target = frameBounds.getCenter(new THREE.Vector3());
-      viewControls.target.lerp(target, zoom);
-      const cameraOffset = camera.position.clone().sub(viewControls.target);
-      const verticalFov = THREE.MathUtils.degToRad(camera.fov);
-      const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * camera.aspect);
-      const limitingFov = Math.min(verticalFov, horizontalFov);
-      const targetDistance = frameBounds.getBoundingSphere(new THREE.Sphere()).radius
-        / Math.sin(limitingFov / 2) * 1.12;
-      cameraOffset.setLength(cameraOffset.length() + (targetDistance - cameraOffset.length()) * zoom);
-      camera.position.copy(viewControls.target).add(cameraOffset);
-      viewControls.update();
+      targetDirection.set(assembled ? 0 : 7.2, assembled ? 0.14 : 2.5, assembled ? -1 : -7.6).normalize();
+      cameraDirection.copy(camera.position).sub(viewControls.target).normalize();
+      const changingView = cameraDirection.angleTo(targetDirection) > 0.002;
+      const changingAssembly = Math.abs(explodeAmount - previousExplode.current) > 0.0005;
+      if (changingAssembly || changingView) {
+        frameBounds.copy(model.assembledBounds);
+        model.parts.forEach(({ bounds, offset }, index) => {
+          const factor = partFactors[index];
+          const movement = offset.clone().multiplyScalar(factor);
+          frameBounds.expandByPoint(bounds.min.clone().add(movement));
+          frameBounds.expandByPoint(bounds.max.clone().add(movement));
+        });
+        const target = frameBounds.getCenter(new THREE.Vector3());
+        viewControls.target.lerp(target, zoom);
+        const cameraOffset = camera.position.clone().sub(viewControls.target);
+        const verticalFov = THREE.MathUtils.degToRad(camera.fov);
+        const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * camera.aspect);
+        const limitingFov = Math.min(verticalFov, horizontalFov);
+        const targetDistance = frameBounds.getBoundingSphere(new THREE.Sphere()).radius
+          / Math.sin(limitingFov / 2) * 1.12;
+        const distance = cameraOffset.length() + (targetDistance - cameraOffset.length()) * zoom;
+        cameraOffset.copy(cameraDirection.lerp(targetDirection, zoom)).multiplyScalar(distance);
+        camera.position.copy(viewControls.target).add(cameraOffset);
+        viewControls.update();
+      }
     }
     previousExplode.current = explodeAmount;
     model.headlightEffects.forEach((light) => {
@@ -935,6 +944,70 @@ function HeadlightGroundGlow({ position, headlightsOn }) {
   );
 }
 
+function FinishedShowroomBay() {
+  const rails = useMemo(() => {
+    const segments = [];
+    const addPolygon = (points) => {
+      points.forEach((point, index) => {
+        segments.push([point, points[(index + 1) % points.length]]);
+      });
+    };
+    const z = 3.55;
+    addPolygon([[-4.1, 3.05, z], [-2.95, 5.05, z], [2.95, 5.05, z], [4.1, 3.05, z]]);
+
+    [3.43, 3.96, 4.49, 5.02].forEach((y, row) => {
+      const count = row % 2 === 0 ? 4 : 3;
+      const spacing = 1.35;
+      for (let column = 0; column < count; column += 1) {
+        const x = (column - (count - 1) / 2) * spacing + (row % 2 ? 0.04 : 0);
+        const radiusX = 0.69;
+        const radiusY = 0.31;
+        addPolygon(Array.from({ length: 6 }, (_, index) => {
+          const angle = (index / 6) * Math.PI * 2;
+          return [x + Math.cos(angle) * radiusX, y + Math.sin(angle) * radiusY, z - 0.015];
+        }));
+      }
+    });
+
+    [-1, 1].forEach((side) => {
+      segments.push(
+        [[side * 4.05, 2.95, 3.5], [side * 2.9, 0.45, 3.5]],
+        [[side * 2.9, 0.45, 3.5], [side * 2.35, 0.12, 0.9]],
+        [[side * 4.05, 2.95, 3.5], [side * 3.2, 1.0, -0.2]],
+      );
+    });
+    return segments.map(([start, end]) => {
+      const from = new THREE.Vector3(...start);
+      const to = new THREE.Vector3(...end);
+      const direction = to.clone().sub(from);
+      return {
+        position: from.add(to).multiplyScalar(0.5),
+        quaternion: new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.clone().normalize()),
+        length: direction.length(),
+      };
+    });
+  }, []);
+
+  return (
+    <group>
+      <mesh position={[0, 3.2, 3.62]}>
+        <planeGeometry args={[11, 8]} />
+        <meshBasicMaterial color="#080b10" side={THREE.DoubleSide} />
+      </mesh>
+      {rails.map((rail, index) => (
+        <mesh key={index} position={rail.position} quaternion={rail.quaternion} scale={[1, rail.length, 1]}>
+          <cylinderGeometry args={[0.022, 0.022, 1, 8]} />
+          <meshBasicMaterial color="#f4faff" toneMapped={false} />
+        </mesh>
+      ))}
+      <pointLight position={[0, 4.2, 1.6]} color="#dceeff" intensity={18} distance={13} decay={2} />
+      <pointLight position={[-3.1, 2.1, 1.1]} color="#8fcaff" intensity={8} distance={8} decay={2} />
+      <pointLight position={[3.1, 2.1, 1.1]} color="#8fcaff" intensity={8} distance={8} decay={2} />
+      <spotLight position={[0, 4.8, -4]} color="#eaf5ff" intensity={24} angle={0.82} penumbra={0.8} distance={16} decay={2} />
+    </group>
+  );
+}
+
 export function CarScene({
   simRef,
   reduced,
@@ -946,6 +1019,7 @@ export function CarScene({
   onPick,
   onReady,
   autoRotate,
+  assembled,
   headlightsOn,
   onOrbitStart,
   onOrbitEnd,
@@ -999,6 +1073,7 @@ export function CarScene({
           onPick={onPick}
           onReady={onReady}
           headlightsOn={headlightsOn}
+          assembled={assembled}
         />
       </Suspense>
       <mesh position={[0, -0.035, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
@@ -1007,6 +1082,7 @@ export function CarScene({
       </mesh>
       <HeadlightGroundGlow position={[-1.35, -0.02, -5.4]} headlightsOn={headlightsOn} />
       <HeadlightGroundGlow position={[1.35, -0.02, -5.4]} headlightsOn={headlightsOn} />
+      {assembled && <FinishedShowroomBay />}
       <ContactShadows position={[0, 0.01, 0]} opacity={0.72} scale={11} blur={2.6} far={3.2} resolution={256} color="#000000" />
       <Grid
         position={[0, 0.005, 0]}
