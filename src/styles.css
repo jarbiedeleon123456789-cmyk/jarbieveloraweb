@@ -135,6 +135,18 @@ tbody tr:hover { background: rgba(255,255,255,0.03); }
 .btn-mini:hover { background: #fff; color: #0a0a0b; }
 .btn-mini.danger { color: #ff9d9d; border-color: rgba(229,72,77,0.5); }
 .btn-mini.danger:hover { background: #e5484d; color: #fff; border-color: #e5484d; }
+.user-management { border-top: 1px solid rgba(255,255,255,0.12); padding-top: 42px; }
+.user-management h2 { font-size: clamp(26px, 3vw, 36px); letter-spacing: -0.02em; }
+.user-management h3 { font-size: 20px; margin-bottom: 18px; }
+.user-form-panel { display: flex; flex-direction: column; gap: 18px; padding: 22px; margin: 0 0 24px; border: 1px solid rgba(255,255,255,0.12); border-radius: 16px; background: rgba(255,255,255,0.035); }
+.user-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.user-message { color: #7ee2a8; margin: 0 0 18px; }
+.users-table { min-width: 760px; }
+.role-label { text-transform: capitalize; }
+.status-label { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.status-label.active { color: #7ee2a8; background: rgba(126,226,168,0.12); }
+.status-label.inactive { color: #ffb7b7; background: rgba(229,72,77,0.12); }
+.btn-mini:disabled { opacity: .45; cursor: not-allowed; }
 .overlay { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.65); backdrop-filter: blur(4px); display: grid; place-items: center; padding: 20px; overflow-y: auto; }
 .modal { width: 100%; max-width: 560px; background: #131316; border: 1px solid rgba(255,255,255,0.14); border-radius: 18px; padding: 28px; display: flex; flex-direction: column; gap: 14px; margin: auto; }
 .modal form { display: flex; flex-direction: column; gap: 14px; }
@@ -382,6 +394,12 @@ tbody tr:hover { background: rgba(255,255,255,0.03); }
   /* Dashboard table becomes stacked cards so Edit/Delete are always visible */
   table { min-width: 0; display: block; }
   thead { display: none; }
+  .users-table { min-width: 760px; display: table; }
+  .users-table thead { display: table-header-group; }
+  .users-table tbody { display: table-row-group; }
+  .users-table tbody tr { display: table-row; padding: 0; }
+  .users-table tbody td { display: table-cell; padding: 14px 18px; border-bottom: 1px solid rgba(255,255,255,0.07); }
+  .user-form-grid { grid-template-columns: 1fr; }
   tbody { display: block; }
   tbody tr { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.07); align-items: center; }
   tbody tr:last-child { border-bottom: none; }

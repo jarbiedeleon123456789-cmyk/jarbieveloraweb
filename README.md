@@ -4,7 +4,11 @@ React 18 + Vite + React Router + Axios + Framer Motion. Talks only to the LavaLu
 (never to the database).
 
 Pages: Home (hero), About, Cars (public catalog with search + category filter), Contact,
-Login, Dashboard (protected CRUD: list, add, edit, delete, logout).
+Login, Dashboard (protected product CRUD and admin-only user management).
+
+Administrators can create, edit, deactivate, and delete user accounts from the dashboard.
+The API prevents removing the last active administrator and prevents deleting the signed-in
+administrator account.
 
 ## Run locally
 

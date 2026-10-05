@@ -6,6 +6,7 @@ import { useAuth } from '../auth';
 import { useGo } from '../transition';
 import Page, { Eyebrow } from '../components/Page';
 import { PART_IMAGES, money } from '../config';
+import AdminUsers from './AdminUsers';
 
 const EMPTY = { product_name: '', category: '', price: '', quantity: '', image_url: '', description: '' };
 
@@ -159,6 +160,12 @@ export default function Dashboard() {
           </div>
         )}
       </section>
+
+      {user.role === 'admin' && (
+        <section className="section">
+          <AdminUsers currentUserId={Number(user.id)} />
+        </section>
+      )}
 
       <AnimatePresence>
         {modal?.type === 'form' && (
