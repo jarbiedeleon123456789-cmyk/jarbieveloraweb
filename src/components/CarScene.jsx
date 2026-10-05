@@ -35,6 +35,7 @@ const bodyStations = [
 const wheelPart = CAR_PARTS.find((part) => part.key === 'wheels');
 const brakePart = CAR_PARTS.find((part) => part.key === 'brakes');
 const modelHighlightColor = new THREE.Color(ACCENT_HEX);
+const headlightGlowColor = new THREE.Color('#c8ecff');
 
 function getModelPart(mesh) {
   const names = [];
@@ -161,6 +162,23 @@ function buildCarModel(scene) {
   root.add(engineGroup);
   groups.set('engine', engineGroup);
 
+  const headlightEffects = new THREE.Group();
+  const headlightGroup = groups.get('headlights');
+  if (headlightGroup) {
+    const bounds = new THREE.Box3().setFromObject(headlightGroup);
+    const center = bounds.getCenter(new THREE.Vector3());
+    const sideOffset = Math.max((bounds.max.x - bounds.min.x) * 0.28, 0.08);
+    headlightEffects.position.copy(center);
+    [-1, 1].forEach((side) => {
+      const light = new THREE.PointLight('#c8ecff', 18, 6, 2);
+      light.position.x = side * sideOffset;
+      light.userData.isHeadlight = true;
+      light.visible = false;
+      headlightEffects.add(light);
+    });
+    root.add(headlightEffects);
+  }
+
   root.updateMatrixWorld(true);
   const bounds = new THREE.Box3().setFromObject(root);
   const center = bounds.getCenter(new THREE.Vector3());
@@ -202,10 +220,15 @@ function buildCarModel(scene) {
     }
     return { id, group, key, order: group.userData.order, offset };
   });
-  return { root, parts, customMaterials: engineAssembly.materials };
+  return {
+    root,
+    parts,
+    customMaterials: engineAssembly.materials,
+    headlightEffects: headlightEffects.children,
+  };
 }
 
-function RealCarModel({ simRef, reduced, hovered, hoveredPart, selected, selectedPart, onHover, onPick, onReady }) {
+function RealCarModel({ simRef, reduced, hovered, hoveredPart, selected, selectedPart, onHover, onPick, onReady, headlightsOn }) {
   const { scene } = useGLTF('/models/nova-r9.glb');
   const camera = useThree((state) => state.camera);
   const controls = useThree((state) => state.controls);
@@ -221,6 +244,7 @@ function RealCarModel({ simRef, reduced, hovered, hoveredPart, selected, selecte
           material,
           key,
           id: group.userData.partId,
+          isHeadlight: key === 'headlights',
           emissive: material.emissive?.clone() ?? new THREE.Color('#000000'),
           intensity: material.emissiveIntensity ?? 0,
         });
@@ -282,13 +306,18 @@ function RealCarModel({ simRef, reduced, hovered, hoveredPart, selected, selecte
       viewControls.update();
     }
     previousExplode.current = explodeAmount;
-    materials.forEach(({ material, key, id, emissive, intensity }) => {
+    model.headlightEffects.forEach((light) => {
+      light.visible = headlightsOn;
+    });
+    materials.forEach(({ material, key, id, isHeadlight, emissive, intensity }) => {
       if (!material.emissive) return;
       const isSelectedPart = selectedPart ? selectedPart === id : selected === key;
       const isHoveredPart = hoveredPart ? hoveredPart === id : hovered === key;
       const highlight = isSelectedPart ? (selectedPart ? 0.12 : 0.055) : isHoveredPart ? (hoveredPart ? 0.07 : 0.035) : 0;
-      material.emissive.copy(highlight ? modelHighlightColor : emissive);
-      material.emissiveIntensity = intensity + highlight;
+      material.emissive.copy(highlight ? modelHighlightColor : (isHeadlight && headlightsOn ? headlightGlowColor : emissive));
+      material.emissiveIntensity = isHeadlight
+        ? (headlightsOn ? Math.max(intensity, 2.8) + highlight : highlight)
+        : intensity + highlight;
     });
   });
 
@@ -808,7 +837,48 @@ function CarModel({ simRef, reduced, hovered, selected, onHover, onPick }) {
   );
 }
 
-export function CarScene({ simRef, reduced, hovered, hoveredPart, selected, selectedPart, onHover, onPick, onReady, autoRotate }) {
+function GarageLightPanel({ position }) {
+  const geometry = useMemo(() => new THREE.CylinderGeometry(0.018, 0.018, 1, 8), []);
+  const material = useMemo(() => new THREE.MeshBasicMaterial({ color: '#f4faff', toneMapped: false }), []);
+  const segments = useMemo(() => {
+    const vertices = Array.from({ length: 6 }, (_, index) => {
+      const angle = (index / 6) * Math.PI * 2;
+      return new THREE.Vector3(Math.cos(angle) * 0.88, 0, Math.sin(angle) * 0.88);
+    });
+    return vertices.map((start, index) => {
+      const end = vertices[(index + 1) % vertices.length];
+      const direction = end.clone().sub(start);
+      return {
+        position: start.clone().add(end).multiplyScalar(0.5),
+        quaternion: new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.clone().normalize()),
+        length: direction.length(),
+      };
+    });
+  }, []);
+
+  useEffect(() => () => {
+    geometry.dispose();
+    material.dispose();
+  }, [geometry, material]);
+
+  return (
+    <group position={position}>
+      {segments.map((segment, index) => (
+        <mesh
+          key={index}
+          geometry={geometry}
+          material={material}
+          position={segment.position}
+          quaternion={segment.quaternion}
+          scale={[1, segment.length, 1]}
+        />
+      ))}
+      <pointLight position={[0, -0.18, 0]} color="#e6f3ff" intensity={9} distance={7} decay={2} />
+    </group>
+  );
+}
+
+export function CarScene({ simRef, reduced, hovered, hoveredPart, selected, selectedPart, onHover, onPick, onReady, autoRotate, headlightsOn }) {
   const gl = useThree((state) => state.gl);
   const scene = useThree((state) => state.scene);
 
@@ -834,6 +904,15 @@ export function CarScene({ simRef, reduced, hovered, hoveredPart, selected, sele
       <directionalLight position={[-7, 5, -6]} intensity={0.95} color="#9fcde4" />
       <spotLight position={[0, 8, -8]} angle={0.58} penumbra={0.82} intensity={36} color="#ffd21f" distance={26} />
       <spotLight position={[5, 5, 7]} angle={0.7} penumbra={1} intensity={18} color="#c3d8ff" distance={22} />
+      <group>
+        {[
+          [-1.02, 3.75, -1.32],
+          [1.02, 3.75, -1.32],
+          [-1.02, 3.75, 1.32],
+          [1.02, 3.75, 1.32],
+        ].map((position) => <GarageLightPanel key={position.join(':')} position={position} />)}
+        <spotLight position={[0, 4.1, 0]} angle={0.88} penumbra={0.8} intensity={28} color="#dceeff" distance={12} />
+      </group>
       <Suspense fallback={null}>
         <RealCarModel
           simRef={simRef}
@@ -845,6 +924,7 @@ export function CarScene({ simRef, reduced, hovered, hoveredPart, selected, sele
           onHover={onHover}
           onPick={onPick}
           onReady={onReady}
+          headlightsOn={headlightsOn}
         />
       </Suspense>
       <ContactShadows position={[0, 0.01, 0]} opacity={0.72} scale={11} blur={2.6} far={3.2} resolution={256} color="#000000" />
