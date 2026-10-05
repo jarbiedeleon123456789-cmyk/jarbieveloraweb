@@ -7,7 +7,6 @@ import { useAuth } from '../auth';
 const LINKS = [
   ['Home', '/'],
   ['About', '/about'],
-  ['Cars', '/cars'],
   ['Contact', '/contact'],
 ];
 
@@ -16,12 +15,18 @@ export default function Navbar({ home = false }) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   useEffect(() => setOpen(false), [pathname]);
+  const links = user
+    ? [LINKS[0], LINKS[1], ['Cars', '/cars'], LINKS[2]]
+    : LINKS;
 
   const cta = home
-    ? { label: 'Browse cars', to: '/cars' }
+    ? { label: user ? 'Browse parts' : 'Sign in to browse parts', to: user ? '/cars' : '/login' }
     : user
       ? { label: 'Dashboard', to: '/dashboard' }
-      : { label: 'Admin login', to: '/login' };
+      : { label: 'Sign in', to: '/login' };
+  const accountLinks = user
+    ? [['Cars & parts', '/cars'], ['Dashboard', '/dashboard']]
+    : [['Sign in', '/login'], ['Create account', '/register']];
 
   return (
     <>
@@ -36,7 +41,7 @@ export default function Navbar({ home = false }) {
             <span /><span />
           </button>
           <div className="nav-links">
-            {LINKS.map(([label, to]) => (
+            {links.map(([label, to]) => (
               <TLink key={to} to={to} className={'nav-link' + (pathname === to ? ' is-active' : '')}>{label}</TLink>
             ))}
           </div>
@@ -51,7 +56,7 @@ export default function Navbar({ home = false }) {
       <AnimatePresence>
         {open && (
           <motion.div className="mobile-menu" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
-            {[...LINKS, ...(user ? [['Dashboard', '/dashboard']] : [['Admin login', '/login']])].map(([label, to], i) => (
+            {[...links, ...accountLinks].map(([label, to], i) => (
               <motion.div key={to} initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.05 * i + 0.05 }}>
                 <TLink to={to} className="mobile-link" onClick={() => setOpen(false)}>{label}</TLink>
               </motion.div>

@@ -107,6 +107,7 @@ export default function Dashboard() {
 
   if (!ready) return <div className="boot">Loading…</div>;
   if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== 'admin') return <Navigate to="/cars" replace />;
 
   const saved = (msg) => { setModal(null); setToast(msg); load(); };
   const remove = async () => {

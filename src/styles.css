@@ -118,6 +118,9 @@ label { display: flex; flex-direction: column; gap: 7px; font-size: 13px; font-w
 .btn-danger:hover:not(:disabled) { background: #f0585d; }
 .form-error { color: #ff9d9d; background: rgba(229,72,77,0.12); border: 1px solid rgba(229,72,77,0.4); border-radius: 10px; padding: 10px 14px; font-size: 14px; }
 .err { color: #ff9d9d; font-size: 12px; font-weight: 500; }
+.field-hint { color: rgba(255,255,255,0.5); font-size: 12px; font-weight: 400; }
+.auth-switch { margin-top: 20px; color: rgba(255,255,255,0.68); }
+.auth-switch a { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
 
 /* ---------------- DASHBOARD ---------------- */
 .dash-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; flex-wrap: wrap; margin-bottom: 26px; }

@@ -3,8 +3,11 @@
 React 18 + Vite + React Router + Axios + Framer Motion. Talks only to the LavaLust API
 (never to the database).
 
-Pages: Home (hero), About, Cars (public catalog with search + category filter), Contact,
-Login, Dashboard (protected product CRUD and admin-only user management).
+Pages: Home (hero), About, Contact, Cars (signed-in catalog with search + category filter),
+Login, Register, Dashboard (protected product CRUD and admin-only user management).
+
+Guests can browse Home, About, and Contact. Cars and parts require an account; registration
+creates a regular customer account and rejects an email address that is already registered.
 
 Administrators can create, edit, deactivate, and delete user accounts from the dashboard.
 The API prevents removing the last active administrator and prevents deleting the signed-in
