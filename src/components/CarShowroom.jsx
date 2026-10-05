@@ -5,195 +5,7 @@ import { CarScene } from './CarScene';
 import { ASSEMBLY_STEPS, CAR_PARTS, explodeFactor } from '../lib/carParts';
 import { JARV_PRODUCTS } from '../lib/jarvProducts';
 import { money } from '../config';
-
-function playTone(context, frequency, endFrequency, duration, volume, type = 'sine') {
-  const now = context.currentTime;
-  const oscillator = context.createOscillator();
-  const gain = context.createGain();
-  oscillator.type = type;
-  oscillator.frequency.setValueAtTime(frequency, now);
-  oscillator.frequency.exponentialRampToValueAtTime(endFrequency, now + duration);
-  gain.gain.setValueAtTime(0.0001, now);
-  gain.gain.exponentialRampToValueAtTime(volume, now + 0.008);
-  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-  oscillator.connect(gain);
-  gain.connect(context.destination);
-  oscillator.start(now);
-  oscillator.stop(now + duration);
-}
-
-function playMechanicalImpact(context, lowFrequency = 240, highFrequency = 1180, duration = 0.16) {
-  const now = context.currentTime;
-  const size = Math.ceil(context.sampleRate * duration);
-  const buffer = context.createBuffer(1, size, context.sampleRate);
-  const samples = buffer.getChannelData(0);
-  for (let index = 0; index < size; index += 1) {
-    samples[index] = (Math.random() * 2 - 1) * (1 - index / size);
-  }
-
-  const source = context.createBufferSource();
-  const filter = context.createBiquadFilter();
-  const gain = context.createGain();
-  source.buffer = buffer;
-  filter.type = 'bandpass';
-  filter.frequency.setValueAtTime(highFrequency, now);
-  filter.frequency.exponentialRampToValueAtTime(lowFrequency, now + duration);
-  filter.Q.value = 1.4;
-  gain.gain.setValueAtTime(0.2, now);
-  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-  source.connect(filter);
-  filter.connect(gain);
-  gain.connect(context.destination);
-  source.start(now);
-  source.stop(now + duration);
-}
-
-function playShowroomSound(context, kind) {
-  if (kind === 'engine-start') {
-    const now = context.currentTime;
-    const duration = 2.6;
-    const compressor = context.createDynamicsCompressor();
-    const master = context.createGain();
-    compressor.threshold.value = -14;
-    compressor.knee.value = 18;
-    compressor.ratio.value = 5;
-    compressor.attack.value = 0.004;
-    compressor.release.value = 0.24;
-    master.gain.value = 0.8;
-    master.connect(compressor);
-    compressor.connect(context.destination);
-
-    const engineFilter = context.createBiquadFilter();
-    const engineGain = context.createGain();
-    engineFilter.type = 'lowpass';
-    engineFilter.frequency.setValueAtTime(420, now);
-    engineFilter.frequency.linearRampToValueAtTime(760, now + 1.45);
-    engineFilter.frequency.linearRampToValueAtTime(510, now + duration);
-    engineGain.gain.setValueAtTime(0.0001, now);
-    engineGain.gain.linearRampToValueAtTime(0.27, now + 0.18);
-    engineGain.gain.linearRampToValueAtTime(0.21, now + 0.85);
-    engineGain.gain.linearRampToValueAtTime(0.47, now + 1.12);
-    engineGain.gain.linearRampToValueAtTime(0.31, now + 1.55);
-    engineGain.gain.linearRampToValueAtTime(0.23, now + duration);
-    engineFilter.connect(engineGain);
-    engineGain.connect(master);
-
-    const engine = context.createOscillator();
-    engine.type = 'sawtooth';
-    engine.frequency.setValueAtTime(47, now);
-    engine.frequency.linearRampToValueAtTime(35, now + 0.78);
-    engine.frequency.linearRampToValueAtTime(61, now + 1.12);
-    engine.frequency.linearRampToValueAtTime(112, now + 1.58);
-    engine.frequency.exponentialRampToValueAtTime(76, now + duration);
-    engine.connect(engineFilter);
-    engine.start(now);
-    engine.stop(now + duration);
-
-    const harmonic = context.createOscillator();
-    const harmonicGain = context.createGain();
-    harmonic.type = 'triangle';
-    harmonic.frequency.setValueAtTime(94, now);
-    harmonic.frequency.linearRampToValueAtTime(224, now + 1.58);
-    harmonic.frequency.exponentialRampToValueAtTime(152, now + duration);
-    harmonicGain.gain.value = 0.14;
-    harmonic.connect(harmonicGain);
-    harmonicGain.connect(engineFilter);
-    harmonic.start(now);
-    harmonic.stop(now + duration);
-
-    const noiseLength = Math.ceil(context.sampleRate * duration);
-    const noiseBuffer = context.createBuffer(1, noiseLength, context.sampleRate);
-    const noiseSamples = noiseBuffer.getChannelData(0);
-    for (let index = 0; index < noiseLength; index += 1) {
-      noiseSamples[index] = Math.random() * 2 - 1;
-    }
-    const noise = context.createBufferSource();
-    const noiseFilter = context.createBiquadFilter();
-    const noiseGain = context.createGain();
-    noise.buffer = noiseBuffer;
-    noiseFilter.type = 'bandpass';
-    noiseFilter.frequency.value = 520;
-    noiseFilter.Q.value = 0.7;
-    noiseGain.gain.setValueAtTime(0.0001, now);
-    noiseGain.gain.setValueAtTime(0.0001, now + 0.12);
-    noiseGain.gain.linearRampToValueAtTime(0.2, now + 0.2);
-    noiseGain.gain.linearRampToValueAtTime(0.0001, now + 0.34);
-    noiseGain.gain.setValueAtTime(0.0001, now + 0.42);
-    noiseGain.gain.linearRampToValueAtTime(0.22, now + 0.5);
-    noiseGain.gain.linearRampToValueAtTime(0.0001, now + 0.65);
-    noiseGain.gain.setValueAtTime(0.0001, now + 0.7);
-    noiseGain.gain.linearRampToValueAtTime(0.2, now + 0.78);
-    noiseGain.gain.linearRampToValueAtTime(0.0001, now + 0.92);
-    noiseGain.gain.setValueAtTime(0.0001, now + 1.02);
-    noiseGain.gain.linearRampToValueAtTime(0.11, now + 1.16);
-    noiseGain.gain.linearRampToValueAtTime(0.0001, now + 1.72);
-    noise.connect(noiseFilter);
-    noiseFilter.connect(noiseGain);
-    noiseGain.connect(master);
-    noise.start(now);
-    noise.stop(now + duration);
-    return;
-  }
-
-  if (kind === 'motion') {
-    const now = context.currentTime;
-    const sampleCount = Math.ceil(context.sampleRate * 0.32);
-    const buffer = context.createBuffer(1, sampleCount, context.sampleRate);
-    const samples = buffer.getChannelData(0);
-    for (let index = 0; index < sampleCount; index += 1) {
-      samples[index] = Math.random() * 2 - 1;
-    }
-
-    const source = context.createBufferSource();
-    const filter = context.createBiquadFilter();
-    const gain = context.createGain();
-    source.buffer = buffer;
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(950, now);
-    filter.frequency.exponentialRampToValueAtTime(180, now + 0.32);
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.035, now + 0.04);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
-    source.connect(filter);
-    filter.connect(gain);
-    gain.connect(context.destination);
-    source.start(now);
-    source.stop(now + 0.32);
-    playTone(context, 105, 55, 0.32, 0.018);
-    return;
-  }
-
-  if (kind === 'seat') {
-    playMechanicalImpact(context, 360, 1450, 0.13);
-    playTone(context, 265, 128, 0.18, 0.14, 'triangle');
-    return;
-  }
-
-  if (kind === 'select' || kind === 'click') {
-    playMechanicalImpact(context, 640, 2100, 0.075);
-    playTone(context, kind === 'select' ? 840 : 620, 430, 0.095, 0.08, 'triangle');
-    return;
-  }
-
-  if (kind === 'scrub') {
-    playTone(context, 155, 205, 0.18, 0.055, 'triangle');
-    return;
-  }
-
-  if (kind === 'orbit') {
-    playMechanicalImpact(context, 310, 880, 0.19);
-    playTone(context, 170, 115, 0.2, 0.045, 'triangle');
-    return;
-  }
-
-  if (kind === 'explode') {
-    playTone(context, 180, 68, 0.6, 0.24, 'sawtooth');
-    playMechanicalImpact(context, 100, 460, 0.45);
-    return;
-  }
-
-  playTone(context, 105, 62, 0.2, 0.1);
-}
+import { VeloraAudio } from '../lib/audioEngine';
 
 function useReducedMotion() {
   const [reduced, setReduced] = useState(false);
@@ -229,10 +41,13 @@ export default function CarShowroom() {
   const [autoRotate, setAutoRotate] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [audioError, setAudioError] = useState('');
-  const audioContextRef = useRef(null);
+  const [soundMuted, setSoundMuted] = useState(false);
+  const audioRef = useRef(null);
   const soundEnabledRef = useRef(false);
+  const userMutedRef = useRef(false);
   const engineStartedRef = useRef(false);
-  const lastSeatedRef = useRef(0);
+  const seatedRef = useRef(null);
+  const movingRef = useRef(false);
   const lastScrubSoundRef = useRef(0);
   const [hud, setHud] = useState({ progress: 0, explodeAmount: 100, active: -1, done: 0, exploded: false });
   const AudioContextConstructor = typeof window !== 'undefined'
@@ -242,51 +57,50 @@ export default function CarShowroom() {
   const assembled = modelReady && started && hud.done === ASSEMBLY_STEPS.length && !hud.exploded;
 
   const playSound = (kind) => {
-    if (soundEnabledRef.current && audioContextRef.current?.state === 'running') {
-      playShowroomSound(audioContextRef.current, kind);
-    }
+    const audio = audioRef.current;
+    if (soundEnabledRef.current && audio?.ctx.state === 'running') audio.sfx(kind);
   };
 
-  const toggleSound = () => {
-    if (soundEnabled) {
-      soundEnabledRef.current = false;
-      engineStartedRef.current = false;
-      setSoundEnabled(false);
+  const enableSound = useCallback(() => {
+    if (soundEnabledRef.current) return;
+    if (!AudioContextConstructor) {
+      setAudioError('Sound is not supported by this browser.');
       return;
     }
-
     try {
-      if (!AudioContextConstructor) {
-        setAudioError('Sound is not supported by this browser.');
-        return;
+      let audio = audioRef.current;
+      if (!audio || audio.ctx.state === 'closed') {
+        audio = new VeloraAudio(new AudioContextConstructor());
+        audioRef.current = audio;
       }
-      const context = audioContextRef.current?.state === 'closed'
-        ? new AudioContextConstructor()
-        : audioContextRef.current || new AudioContextConstructor();
-      audioContextRef.current = context;
-      soundEnabledRef.current = true;
-      setSoundEnabled(true);
-      setAudioError('');
-      context.resume()
+      audio.ctx.resume()
         .then(() => {
-          if (!soundEnabledRef.current) return;
-          playShowroomSound(context, 'click');
-          if (assembled && !engineStartedRef.current) {
-            engineStartedRef.current = true;
-            playShowroomSound(context, 'engine-start');
-          }
+          if (audio.ctx.state !== 'running' || soundEnabledRef.current || userMutedRef.current) return;
+          soundEnabledRef.current = true;
+          setSoundEnabled(true);
+          setAudioError('');
+          audio.startAmbient();
+          audio.sfx('click');
         })
-        .catch(() => {
-          soundEnabledRef.current = false;
-          engineStartedRef.current = false;
-          setSoundEnabled(false);
-          setAudioError('Sound could not start. Check your browser audio settings.');
-        });
+        .catch(() => setAudioError('Sound could not start. Check your browser audio settings.'));
     } catch {
-        soundEnabledRef.current = false;
-        setSoundEnabled(false);
-        setAudioError('Could not create audio. Check your browser audio settings.');
+      setAudioError('Could not create audio. Check your browser audio settings.');
     }
+  }, [AudioContextConstructor]);
+
+  const toggleSound = () => {
+    if (soundEnabledRef.current) {
+      userMutedRef.current = true;
+      soundEnabledRef.current = false;
+      engineStartedRef.current = false;
+      setSoundMuted(true);
+      setSoundEnabled(false);
+      audioRef.current?.silence();
+      return;
+    }
+    userMutedRef.current = false;
+    setSoundMuted(false);
+    enableSound();
   };
 
   const onReady = useCallback(() => setModelReady(true), []);
@@ -304,15 +118,45 @@ export default function CarShowroom() {
   }, [modelReady, reduced]);
 
   useEffect(() => {
-    if (!assembled || !soundEnabled) {
+    const unlock = () => {
+      if (!userMutedRef.current) enableSound();
+    };
+    const events = ['pointerdown', 'keydown', 'touchend'];
+    events.forEach((name) => window.addEventListener(name, unlock, { passive: true }));
+    return () => events.forEach((name) => window.removeEventListener(name, unlock));
+  }, [enableSound]);
+
+  useEffect(() => {
+    const onVisibility = () => {
+      const context = audioRef.current?.ctx;
+      if (!context || context.state === 'closed') return;
+      if (document.hidden) context.suspend().catch(() => {});
+      else if (soundEnabledRef.current) context.resume().catch(() => {});
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      audioRef.current?.dispose();
+      audioRef.current = null;
+      soundEnabledRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!soundEnabled || !audio) return undefined;
+    if (!assembled) {
+      if (engineStartedRef.current) audio.engineStop();
       engineStartedRef.current = false;
-      return;
+      return undefined;
     }
-    const context = audioContextRef.current;
-    if (context?.state === 'running' && !engineStartedRef.current) {
-      engineStartedRef.current = true;
-      playShowroomSound(context, 'engine-start');
-    }
+    const timeout = setTimeout(() => {
+      if (!engineStartedRef.current && soundEnabledRef.current) {
+        engineStartedRef.current = true;
+        audio.engineStart();
+      }
+    }, 900);
+    return () => clearTimeout(timeout);
   }, [assembled, soundEnabled]);
 
   useEffect(() => {
@@ -323,15 +167,46 @@ export default function CarShowroom() {
       let sum = 0;
       let active = -1;
       let done = 0;
+      const seated = [];
 
       ASSEMBLY_STEPS.forEach((part, order) => {
         const factor = reduced && sim.phase !== 'scrubbed'
           ? (sim.phase === 'exploded' ? 1 : 0)
           : explodeFactor(sim, order, performance.now());
         sum += factor;
+        seated[order] = factor < 0.02;
         if (factor < 0.02) done += 1;
         if (active < 0 && factor > 0.02 && factor < 0.98) active = order;
       });
+
+      const audio = audioRef.current;
+      const previousSeated = seatedRef.current;
+      seatedRef.current = seated;
+      if (audio && soundEnabledRef.current && previousSeated) {
+        const landed = [];
+        const lifted = [];
+        seated.forEach((isSeated, order) => {
+          if (isSeated !== previousSeated[order]) (isSeated ? landed : lifted).push(order);
+        });
+        const canPlay = sim.phase !== 'scrubbed' || audio.throttle('step', 110);
+        if (canPlay && sim.phase !== 'exploding' && landed.length) {
+          if (landed.length > 3) audio.sfx('seat', { part: 'body' });
+          else landed.forEach((order) => audio.sfx('seat', {
+            part: order === 3 ? 'rims' : ASSEMBLY_STEPS[order].key,
+          }));
+        }
+        if (canPlay && sim.phase !== 'assembling' && lifted.length) {
+          if (lifted.length > 3) audio.sfx('explode');
+          else lifted.forEach((order) => audio.sfx('unseat', {
+            part: order === 3 ? 'rims' : ASSEMBLY_STEPS[order].key,
+          }));
+        }
+        const moving = (sim.phase === 'assembling' || sim.phase === 'exploding') && active >= 0;
+        if (moving !== movingRef.current) {
+          movingRef.current = moving;
+          audio.setMotion(moving);
+        }
+      }
 
       const average = sum / ASSEMBLY_STEPS.length;
       const progress = Math.round((1 - average) * 100);
@@ -355,16 +230,6 @@ export default function CarShowroom() {
   }, [reduced]);
 
   useEffect(() => {
-    if (!started) return;
-    const previous = lastSeatedRef.current;
-    lastSeatedRef.current = hud.done;
-    if (simRef.current.phase !== 'assembling' || !soundEnabled || hud.done <= previous) return;
-    for (let seated = previous; seated < hud.done; seated += 1) {
-      playSound('seat');
-    }
-  }, [hud.done, soundEnabled, started]);
-
-  useEffect(() => {
     const focusPart = (event) => {
       setSelected(event.detail);
       setSelectedPart(null);
@@ -376,7 +241,7 @@ export default function CarShowroom() {
 
   const animate = (phase) => {
     simRef.current = { phase: reduced ? (phase === 'exploding' ? 'exploded' : 'assembled') : phase, start: performance.now() };
-    playSound(phase === 'exploding' ? 'explode' : 'motion');
+    playSound(phase === 'exploding' ? 'explode' : 'assemble-start');
   };
   const toggleExploded = () => animate(hud.exploded ? 'assembling' : 'exploding');
   const rebuild = () => {
@@ -404,7 +269,13 @@ export default function CarShowroom() {
     playSound('select');
   };
   const onOrbitStart = () => playSound('orbit');
-  const onOrbitEnd = () => playSound('click');
+  const onOrbitEnd = () => {
+    playSound('click');
+    const audio = audioRef.current;
+    if (soundEnabledRef.current && engineStartedRef.current && audio?.throttle('rev', 1800)) {
+      audio.engineBlip();
+    }
+  };
 
   const product = selected ? JARV_PRODUCTS.find((item) => item.three_part === selected) : null;
   const phaseLabel = getPhaseLabel(started, hud);
@@ -499,6 +370,11 @@ export default function CarShowroom() {
         </button>
       </div>
       {audioError && <p className="jarv-audio-error" role="status">{audioError}</p>}
+      {!soundEnabled && !soundMuted && !audioError && audioSupported && (
+        <button type="button" className="jarv-sound-hint" onClick={enableSound}>
+          <i /> TAP ANYWHERE TO TURN ON SOUND
+        </button>
+      )}
 
       <label className="jarv-explode-scrubber">
         <span>ASSEMBLED</span>
