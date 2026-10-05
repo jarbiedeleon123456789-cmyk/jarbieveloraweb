@@ -5,7 +5,6 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import {
   ACCENT_HEX,
-  ASSEMBLY_STEPS,
   BRAKE_OUT,
   CAR_PARTS,
   explodeFactor,
@@ -189,6 +188,8 @@ function buildCarModel(scene) {
   const center = bounds.getCenter(new THREE.Vector3());
   root.position.set(-center.x, -bounds.min.y, -center.z);
 
+  const assembledBounds = new THREE.Box3().makeEmpty();
+  const explodedBounds = new THREE.Box3().makeEmpty();
   const parts = [...groups.entries()].map(([id, group]) => {
     const partBounds = new THREE.Box3().setFromObject(group);
     const centerOfPart = partBounds.getCenter(new THREE.Vector3());
@@ -223,11 +224,16 @@ function buildCarModel(scene) {
       };
       offset = new THREE.Vector3(...(offsets[id] ?? offsets[key] ?? [0, 1.5, 0]));
     }
-    return { id, group, key, order: group.userData.order, offset };
+    offset.multiplyScalar(0.78);
+    assembledBounds.union(partBounds);
+    explodedBounds.union(partBounds.clone().translate(offset));
+    return { id, group, key, order: group.userData.order, offset, bounds: partBounds };
   });
   return {
     root,
     parts,
+    assembledBounds,
+    explodedBounds,
     customMaterials: engineAssembly.materials,
     headlightEffects,
   };
@@ -238,6 +244,7 @@ function RealCarModel({ simRef, reduced, hovered, hoveredPart, selected, selecte
   const camera = useThree((state) => state.camera);
   const controls = useThree((state) => state.controls);
   const previousExplode = useRef(0);
+  const frameBounds = useMemo(() => new THREE.Box3(), []);
   const model = useMemo(() => buildCarModel(scene), [scene]);
   const materials = useMemo(() => model.parts.flatMap(({ group, key, id }) => {
     const result = [];
@@ -292,20 +299,34 @@ function RealCarModel({ simRef, reduced, hovered, hoveredPart, selected, selecte
   useFrame((_, delta) => {
     const now = performance.now();
     let explodeAmount = 0;
+    const partFactors = [];
     model.parts.forEach(({ group, order, offset }) => {
       const factor = reduced && simRef.current.phase !== 'scrubbed'
         ? (simRef.current.phase === 'exploded' ? 1 : 0)
         : explodeFactor(simRef.current, order, now);
       explodeAmount += factor;
+      partFactors.push(factor);
       group.position.copy(offset).multiplyScalar(factor);
     });
-    explodeAmount /= ASSEMBLY_STEPS.length;
+    explodeAmount /= model.parts.length;
     if (controls && Math.abs(explodeAmount - previousExplode.current) > 0.0005) {
       const viewControls = controls;
       const zoom = Math.min(1, delta * 2.5);
-      viewControls.target.y += (0.88 + explodeAmount * 0.26 - viewControls.target.y) * zoom;
+      frameBounds.copy(model.assembledBounds);
+      model.parts.forEach(({ bounds, offset }, index) => {
+        const factor = partFactors[index];
+        const movement = offset.clone().multiplyScalar(factor);
+        frameBounds.expandByPoint(bounds.min.clone().add(movement));
+        frameBounds.expandByPoint(bounds.max.clone().add(movement));
+      });
+      const target = frameBounds.getCenter(new THREE.Vector3());
+      viewControls.target.lerp(target, zoom);
       const cameraOffset = camera.position.clone().sub(viewControls.target);
-      const targetDistance = 10.8 + explodeAmount * 3.5;
+      const verticalFov = THREE.MathUtils.degToRad(camera.fov);
+      const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * camera.aspect);
+      const limitingFov = Math.min(verticalFov, horizontalFov);
+      const targetDistance = frameBounds.getBoundingSphere(new THREE.Sphere()).radius
+        / Math.sin(limitingFov / 2) * 1.12;
       cameraOffset.setLength(cameraOffset.length() + (targetDistance - cameraOffset.length()) * zoom);
       camera.position.copy(viewControls.target).add(cameraOffset);
       viewControls.update();
@@ -975,7 +996,7 @@ export function CarScene({
         makeDefault
         enablePan={false}
         minDistance={4}
-        maxDistance={13}
+        maxDistance={28}
         maxPolarAngle={1.48}
         target={[0, 0.9, 0]}
         autoRotate={autoRotate && !reduced}

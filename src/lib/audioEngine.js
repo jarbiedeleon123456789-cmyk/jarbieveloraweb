@@ -9,11 +9,11 @@
 
 export const SAMPLE_FILES = {
   ambient: '/sounds/ambient.mp3',
-  'engine-start': '/sounds/engine-start.mp3',
+  'engine-start': '/sounds/wings_of_freedom-ferrari-sound-430458.mp3',
   'engine-idle': '/sounds/engine-idle.mp3',
   seat: '/sounds/assemble.mp3',
   unseat: '/sounds/disassemble.mp3',
-  explode: '/sounds/explode.mp3',
+  explode: '/sounds/ncprime-winds-sound-effects-304060.mp3',
   'lights-on': '/sounds/lights-on.mp3',
 };
 
@@ -28,6 +28,7 @@ export class VeloraAudio {
     this.ambientNodes = null;
     this.ambientTimer = 0;
     this.engine = null;
+    this.engineStartTimer = 0;
     this.engineIdleTimer = 0;
     this.motion = null;
     this.lastHit = {};
@@ -317,7 +318,7 @@ export class VeloraAudio {
       return;
     }
     if (kind === 'explode') {
-      if (this.samples.explode) { this.playSample('explode'); return; }
+      if (this.samples.explode) { this.playSample('explode', { volume: 0.72 }); return; }
       this.hiss(t, { dur: 0.9, vol: 0.2, f: 3800 });
       this.thud(t, { f: 55, vol: 0.34, dur: 0.6 });
       this.whoosh(t, { dur: 0.9, vol: 0.11, f0: 250, f1: 1800 });
@@ -823,13 +824,20 @@ export class VeloraAudio {
     this.tone(t0 + 0.12, { f0: 262, f1: 300, dur: 0.85, vol: 0.016, attack: 0.25 });
 
     if (this.samples['engine-start']) {
-      this.playSample('engine-start', { dest: this.engineOut });
-      if (this.samples['engine-idle']) {
-        const duration = this.samples['engine-start'].duration;
-        window.setTimeout(() => {
+      const startSample = this.playSample('engine-start', { volume: 1.35, dest: this.engineOut });
+      this.engine = { sample: startSample };
+      this.engineStartTimer = window.setTimeout(() => {
+        if (this.engine?.sample !== startSample) return;
+        if (this.samples['engine-idle']) {
           this.engine = { sample: this.playSample('engine-idle', { loop: true, dest: this.engineOut }) };
-        }, Math.max(0, duration - 0.6) * 1000);
-      }
+          return;
+        }
+        this.engine = this.buildEngine();
+        const idleTime = ctx.currentTime + 0.04;
+        this.enginePoint(idleTime, 960, 0.05);
+        this.idleStart = idleTime;
+        this.scheduleEngineIdle();
+      }, this.samples['engine-start'].duration * 1000);
       return;
     }
 
@@ -860,6 +868,11 @@ export class VeloraAudio {
     [0.98, 1.08, 1.2, 1.36, 1.55].forEach((delay, index) => this.exhaustPop(fire + delay, 0.11 - index * 0.012));
 
     this.idleStart = fire + 3.3;
+    this.scheduleEngineIdle();
+  }
+
+  scheduleEngineIdle() {
+    const ctx = this.ctx;
     window.clearInterval(this.engineIdleTimer);
     this.engineIdleTimer = window.setInterval(() => {
       const e = this.engine;
@@ -888,6 +901,8 @@ export class VeloraAudio {
   }
 
   engineStop(fade = 0.9) {
+    window.clearTimeout(this.engineStartTimer);
+    this.engineStartTimer = 0;
     window.clearInterval(this.engineIdleTimer);
     const e = this.engine;
     this.engine = null;
