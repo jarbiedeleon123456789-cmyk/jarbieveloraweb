@@ -414,7 +414,7 @@ export default function CarShowroom() {
       <div className="car-showroom-canvas">
         <Canvas
           dpr={[1, 1.6]}
-          camera={{ position: [7.2, 3.4, 7.6], fov: 38 }}
+          camera={{ position: [7.2, 3.4, -7.6], fov: 38 }}
           gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 0.82 }}
           onPointerMissed={() => {
             setSelected(null);

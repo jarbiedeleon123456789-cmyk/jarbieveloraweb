@@ -169,21 +169,19 @@ function buildCarModel(scene) {
   root.add(engineGroup);
   groups.set('engine', engineGroup);
 
-  const headlightEffects = new THREE.Group();
   const headlightGroup = groups.get('headlights');
+  const headlightEffects = [];
   if (headlightGroup) {
-    const bounds = new THREE.Box3().setFromObject(headlightGroup);
-    const center = bounds.getCenter(new THREE.Vector3());
-    const sideOffset = Math.max((bounds.max.x - bounds.min.x) * 0.28, 0.08);
-    headlightEffects.position.copy(center);
     [-1, 1].forEach((side) => {
-      const light = new THREE.PointLight('#c8ecff', 4.5, 4.5, 2);
-      light.position.x = side * sideOffset;
+      const x = side * 0.55;
+      const light = new THREE.SpotLight('#c8ecff', 0, 16, Math.PI / 7, 0.7, 1.5);
+      light.position.set(x, 0.56, -1.55);
+      light.target.position.set(x, 0.38, -9);
       light.userData.isHeadlight = true;
-      light.visible = false;
-      headlightEffects.add(light);
+      light.castShadow = false;
+      headlightGroup.add(light, light.target);
+      headlightEffects.push(light);
     });
-    root.add(headlightEffects);
   }
 
   root.updateMatrixWorld(true);
@@ -231,7 +229,7 @@ function buildCarModel(scene) {
     root,
     parts,
     customMaterials: engineAssembly.materials,
-    headlightEffects: headlightEffects.children,
+    headlightEffects,
   };
 }
 
@@ -314,7 +312,7 @@ function RealCarModel({ simRef, reduced, hovered, hoveredPart, selected, selecte
     }
     previousExplode.current = explodeAmount;
     model.headlightEffects.forEach((light) => {
-      light.visible = headlightsOn;
+      light.intensity += ((headlightsOn ? 13 : 0) - light.intensity) * Math.min(1, delta * 2.8);
     });
     materials.forEach(({ material, key, id, isHeadlight, emissive, intensity }) => {
       if (!material.emissive) return;
@@ -845,6 +843,8 @@ function CarModel({ simRef, reduced, hovered, selected, onHover, onPick }) {
 }
 
 function GarageLightPanel({ position }) {
+  const lightRef = useRef(null);
+  const elapsedRef = useRef(0);
   const segments = useMemo(() => {
     const vertices = Array.from({ length: 6 }, (_, index) => {
       const angle = (index / 6) * Math.PI * 2;
@@ -861,6 +861,14 @@ function GarageLightPanel({ position }) {
     });
   }, []);
 
+  useFrame((_, delta) => {
+    elapsedRef.current += delta;
+    if (lightRef.current) {
+      const fadeIn = THREE.MathUtils.smoothstep(elapsedRef.current, 0.15, 1.35);
+      lightRef.current.intensity = 3.2 * fadeIn;
+    }
+  });
+
   return (
     <group position={position} rotation={[0.82, 0, 0]}>
       {segments.map((segment, index) => (
@@ -874,7 +882,7 @@ function GarageLightPanel({ position }) {
           <meshBasicMaterial color="#f4faff" toneMapped={false} />
         </mesh>
       ))}
-      <pointLight position={[0, -0.18, 0]} color="#e6f3ff" intensity={1.5} distance={6} decay={2} />
+      <pointLight ref={lightRef} position={[0, -0.18, 0]} color="#e6f3ff" intensity={0} distance={6} decay={2} />
     </group>
   );
 }
@@ -925,10 +933,9 @@ export function CarScene({
       <spotLight position={[5, 5, 7]} angle={0.7} penumbra={1} intensity={4.5} color="#8bb9e8" distance={22} />
       <group>
         {[
-          [0.1, 3.5, -0.9],
-          [1.25, 3.5, -0.9],
-          [0.1, 3.5, 0.9],
-          [1.25, 3.5, 0.9],
+          [-1.25, 3.65, -0.4],
+          [0, 3.65, -0.4],
+          [1.25, 3.65, -0.4],
         ].map((position) => <GarageLightPanel key={position.join(':')} position={position} />)}
         <spotLight position={[0, 4.1, 0]} angle={0.88} penumbra={0.8} intensity={4.5} color="#dceeff" distance={12} />
       </group>
