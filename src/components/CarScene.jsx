@@ -173,9 +173,9 @@ function buildCarModel(scene) {
   if (headlightGroup) {
     [-1, 1].forEach((side) => {
       const x = side * 0.55;
-      const light = new THREE.SpotLight('#c8ecff', 0, 16, Math.PI / 7, 0.7, 1.5);
+      const light = new THREE.SpotLight('#d9f0ff', 0, 30, 0.16, 0.38, 1);
       light.position.set(x, 0.56, -1.55);
-      light.target.position.set(x, 0.38, -9);
+      light.target.position.set(x, 0.02, -23);
       light.userData.isHeadlight = true;
       light.castShadow = false;
       headlightGroup.add(light, light.target);
@@ -333,7 +333,7 @@ function RealCarModel({ simRef, reduced, hovered, hoveredPart, selected, selecte
     }
     previousExplode.current = explodeAmount;
     model.headlightEffects.forEach((light) => {
-      light.intensity += ((headlightsOn ? 13 : 0) - light.intensity) * Math.min(1, delta * 2.8);
+      light.intensity += ((headlightsOn ? 55 : 0) - light.intensity) * Math.min(1, delta * 2.8);
     });
     materials.forEach(({ material, key, id, isHeadlight, emissive, intensity }) => {
       if (!material.emissive) return;
@@ -342,7 +342,7 @@ function RealCarModel({ simRef, reduced, hovered, hoveredPart, selected, selecte
       const highlight = isSelectedPart ? (selectedPart ? 0.12 : 0.055) : isHoveredPart ? (hoveredPart ? 0.07 : 0.035) : 0;
       material.emissive.copy(highlight ? modelHighlightColor : (isHeadlight && headlightsOn ? headlightGlowColor : emissive));
       material.emissiveIntensity = isHeadlight
-        ? (headlightsOn ? Math.max(intensity, 2.1) + highlight : highlight)
+        ? (headlightsOn ? Math.max(intensity, 3.6) + highlight : highlight)
         : intensity + highlight;
     });
   });
