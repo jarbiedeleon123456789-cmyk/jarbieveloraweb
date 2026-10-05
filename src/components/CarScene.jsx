@@ -173,9 +173,9 @@ function buildCarModel(scene) {
   if (headlightGroup) {
     [-1, 1].forEach((side) => {
       const x = side * 0.55;
-      const light = new THREE.SpotLight('#d9f0ff', 0, 30, 0.16, 0.38, 1);
+      const light = new THREE.SpotLight('#d9f0ff', 0, 24, 0.42, 0.82, 1);
       light.position.set(x, 0.56, -1.55);
-      light.target.position.set(x, 0.02, -23);
+      light.target.position.set(side * 2.6, -0.08, -9.5);
       light.userData.isHeadlight = true;
       light.castShadow = false;
       headlightGroup.add(light, light.target);
@@ -908,6 +908,33 @@ function GarageLightPanel({ position }) {
   );
 }
 
+function HeadlightGroundGlow({ position, headlightsOn }) {
+  const materialRef = useRef();
+  useFrame((_, delta) => {
+    if (!materialRef.current) return;
+    const target = headlightsOn ? 0.42 : 0;
+    materialRef.current.uniforms.opacity.value += (
+      target - materialRef.current.uniforms.opacity.value
+    ) * Math.min(1, delta * 2.8);
+  });
+
+  return (
+    <mesh position={position} rotation={[-Math.PI / 2, 0, 0]} scale={[5.5, 10, 1]} renderOrder={1}>
+      <planeGeometry args={[1, 1]} />
+      <shaderMaterial
+        ref={materialRef}
+        transparent
+        depthWrite={false}
+        toneMapped={false}
+        blending={THREE.AdditiveBlending}
+        uniforms={{ opacity: { value: 0 } }}
+        vertexShader="varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }"
+        fragmentShader="uniform float opacity; varying vec2 vUv; void main() { vec2 p = (vUv - 0.5) * 2.0; float radius = length(vec2(p.x * 0.78, p.y)); float falloff = pow(1.0 - smoothstep(0.04, 1.0, radius), 2.2); gl_FragColor = vec4(vec3(0.19, 0.56, 1.0), falloff * opacity); }"
+      />
+    </mesh>
+  );
+}
+
 export function CarScene({
   simRef,
   reduced,
@@ -978,6 +1005,8 @@ export function CarScene({
         <planeGeometry args={[80, 80]} />
         <meshStandardMaterial color="#101923" metalness={0.12} roughness={0.62} />
       </mesh>
+      <HeadlightGroundGlow position={[-1.35, -0.02, -5.4]} headlightsOn={headlightsOn} />
+      <HeadlightGroundGlow position={[1.35, -0.02, -5.4]} headlightsOn={headlightsOn} />
       <ContactShadows position={[0, 0.01, 0]} opacity={0.72} scale={11} blur={2.6} far={3.2} resolution={256} color="#000000" />
       <Grid
         position={[0, 0.005, 0]}
