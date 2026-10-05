@@ -141,7 +141,14 @@ function buildCarModel(scene) {
       groups.set(part.id, group);
     }
     const originals = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-    const materials = originals.map((material) => material.clone());
+    const materials = originals.map((material) => {
+      const clone = material.clone();
+      if (material.name === 'Body') {
+        clone.roughness = 0.42;
+        clone.metalness = 0.34;
+      }
+      return clone;
+    });
     mesh.material = Array.isArray(mesh.material) ? materials : materials[0];
     mesh.castShadow = true;
     mesh.receiveShadow = true;
@@ -170,7 +177,7 @@ function buildCarModel(scene) {
     const sideOffset = Math.max((bounds.max.x - bounds.min.x) * 0.28, 0.08);
     headlightEffects.position.copy(center);
     [-1, 1].forEach((side) => {
-      const light = new THREE.PointLight('#c8ecff', 18, 6, 2);
+      const light = new THREE.PointLight('#c8ecff', 4.5, 4.5, 2);
       light.position.x = side * sideOffset;
       light.userData.isHeadlight = true;
       light.visible = false;
@@ -316,7 +323,7 @@ function RealCarModel({ simRef, reduced, hovered, hoveredPart, selected, selecte
       const highlight = isSelectedPart ? (selectedPart ? 0.12 : 0.055) : isHoveredPart ? (hoveredPart ? 0.07 : 0.035) : 0;
       material.emissive.copy(highlight ? modelHighlightColor : (isHeadlight && headlightsOn ? headlightGlowColor : emissive));
       material.emissiveIntensity = isHeadlight
-        ? (headlightsOn ? Math.max(intensity, 2.8) + highlight : highlight)
+        ? (headlightsOn ? Math.max(intensity, 2.1) + highlight : highlight)
         : intensity + highlight;
     });
   });
@@ -838,12 +845,10 @@ function CarModel({ simRef, reduced, hovered, selected, onHover, onPick }) {
 }
 
 function GarageLightPanel({ position }) {
-  const geometry = useMemo(() => new THREE.CylinderGeometry(0.018, 0.018, 1, 8), []);
-  const material = useMemo(() => new THREE.MeshBasicMaterial({ color: '#f4faff', toneMapped: false }), []);
   const segments = useMemo(() => {
     const vertices = Array.from({ length: 6 }, (_, index) => {
       const angle = (index / 6) * Math.PI * 2;
-      return new THREE.Vector3(Math.cos(angle) * 0.88, 0, Math.sin(angle) * 0.88);
+      return new THREE.Vector3(Math.cos(angle) * 0.68, 0, Math.sin(angle) * 0.68);
     });
     return vertices.map((start, index) => {
       const end = vertices[(index + 1) % vertices.length];
@@ -856,29 +861,39 @@ function GarageLightPanel({ position }) {
     });
   }, []);
 
-  useEffect(() => () => {
-    geometry.dispose();
-    material.dispose();
-  }, [geometry, material]);
-
   return (
-    <group position={position}>
+    <group position={position} rotation={[0.82, 0, 0]}>
       {segments.map((segment, index) => (
         <mesh
           key={index}
-          geometry={geometry}
-          material={material}
           position={segment.position}
           quaternion={segment.quaternion}
           scale={[1, segment.length, 1]}
-        />
+        >
+          <cylinderGeometry args={[0.018, 0.018, 1, 8]} />
+          <meshBasicMaterial color="#f4faff" toneMapped={false} />
+        </mesh>
       ))}
-      <pointLight position={[0, -0.18, 0]} color="#e6f3ff" intensity={9} distance={7} decay={2} />
+      <pointLight position={[0, -0.18, 0]} color="#e6f3ff" intensity={1.5} distance={6} decay={2} />
     </group>
   );
 }
 
-export function CarScene({ simRef, reduced, hovered, hoveredPart, selected, selectedPart, onHover, onPick, onReady, autoRotate, headlightsOn }) {
+export function CarScene({
+  simRef,
+  reduced,
+  hovered,
+  hoveredPart,
+  selected,
+  selectedPart,
+  onHover,
+  onPick,
+  onReady,
+  autoRotate,
+  headlightsOn,
+  onOrbitStart,
+  onOrbitEnd,
+}) {
   const gl = useThree((state) => state.gl);
   const scene = useThree((state) => state.scene);
 
@@ -886,9 +901,13 @@ export function CarScene({ simRef, reduced, hovered, hoveredPart, selected, sele
     const pmrem = new THREE.PMREMGenerator(gl);
     const environment = new RoomEnvironment();
     const target = pmrem.fromScene(environment, 0.04);
+    const previousEnvironment = scene.environment;
+    const previousEnvironmentIntensity = scene.environmentIntensity;
     scene.environment = target.texture;
+    scene.environmentIntensity = 0.68;
     return () => {
-      scene.environment = null;
+      scene.environment = previousEnvironment;
+      scene.environmentIntensity = previousEnvironmentIntensity;
       target.dispose();
       pmrem.dispose();
       environment.dispose();
@@ -899,19 +918,19 @@ export function CarScene({ simRef, reduced, hovered, hoveredPart, selected, sele
     <>
       <color attach="background" args={['#07090c']} />
       <fog attach="fog" args={['#07090c', 12, 26]} />
-      <ambientLight intensity={0.45} />
-      <directionalLight position={[6, 9, 5]} intensity={2} color="#fff2da" castShadow shadow-mapSize={[1024, 1024]} />
-      <directionalLight position={[-7, 5, -6]} intensity={0.95} color="#9fcde4" />
-      <spotLight position={[0, 8, -8]} angle={0.58} penumbra={0.82} intensity={36} color="#ffd21f" distance={26} />
-      <spotLight position={[5, 5, 7]} angle={0.7} penumbra={1} intensity={18} color="#c3d8ff" distance={22} />
+      <ambientLight intensity={0.2} />
+      <directionalLight position={[6, 9, 5]} intensity={1.2} color="#d9e6f4" castShadow shadow-mapSize={[1024, 1024]} />
+      <directionalLight position={[-7, 5, -6]} intensity={0.42} color="#6794bb" />
+      <spotLight position={[0, 8, -8]} angle={0.58} penumbra={0.82} intensity={7} color="#ffd27c" distance={26} />
+      <spotLight position={[5, 5, 7]} angle={0.7} penumbra={1} intensity={4.5} color="#8bb9e8" distance={22} />
       <group>
         {[
-          [-1.02, 3.75, -1.32],
-          [1.02, 3.75, -1.32],
-          [-1.02, 3.75, 1.32],
-          [1.02, 3.75, 1.32],
+          [0.1, 3.5, -0.9],
+          [1.25, 3.5, -0.9],
+          [0.1, 3.5, 0.9],
+          [1.25, 3.5, 0.9],
         ].map((position) => <GarageLightPanel key={position.join(':')} position={position} />)}
-        <spotLight position={[0, 4.1, 0]} angle={0.88} penumbra={0.8} intensity={28} color="#dceeff" distance={12} />
+        <spotLight position={[0, 4.1, 0]} angle={0.88} penumbra={0.8} intensity={4.5} color="#dceeff" distance={12} />
       </group>
       <Suspense fallback={null}>
         <RealCarModel
@@ -927,9 +946,13 @@ export function CarScene({ simRef, reduced, hovered, hoveredPart, selected, sele
           headlightsOn={headlightsOn}
         />
       </Suspense>
+      <mesh position={[0, -0.035, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[80, 80]} />
+        <meshStandardMaterial color="#101923" metalness={0.12} roughness={0.62} />
+      </mesh>
       <ContactShadows position={[0, 0.01, 0]} opacity={0.72} scale={11} blur={2.6} far={3.2} resolution={256} color="#000000" />
       <Grid
-        position={[0, 0, 0]}
+        position={[0, 0.005, 0]}
         args={[30, 30]}
         cellSize={0.6}
         cellThickness={0.5}
@@ -950,6 +973,8 @@ export function CarScene({ simRef, reduced, hovered, hoveredPart, selected, sele
         target={[0, 0.9, 0]}
         autoRotate={autoRotate && !reduced}
         autoRotateSpeed={0.75}
+        onStart={onOrbitStart}
+        onEnd={onOrbitEnd}
       />
     </>
   );

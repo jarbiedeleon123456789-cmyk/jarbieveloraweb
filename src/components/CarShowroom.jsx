@@ -22,6 +22,32 @@ function playTone(context, frequency, endFrequency, duration, volume, type = 'si
   oscillator.stop(now + duration);
 }
 
+function playMechanicalImpact(context, lowFrequency = 240, highFrequency = 1180, duration = 0.16) {
+  const now = context.currentTime;
+  const size = Math.ceil(context.sampleRate * duration);
+  const buffer = context.createBuffer(1, size, context.sampleRate);
+  const samples = buffer.getChannelData(0);
+  for (let index = 0; index < size; index += 1) {
+    samples[index] = (Math.random() * 2 - 1) * (1 - index / size);
+  }
+
+  const source = context.createBufferSource();
+  const filter = context.createBiquadFilter();
+  const gain = context.createGain();
+  source.buffer = buffer;
+  filter.type = 'bandpass';
+  filter.frequency.setValueAtTime(highFrequency, now);
+  filter.frequency.exponentialRampToValueAtTime(lowFrequency, now + duration);
+  filter.Q.value = 1.4;
+  gain.gain.setValueAtTime(0.2, now);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+  source.connect(filter);
+  filter.connect(gain);
+  gain.connect(context.destination);
+  source.start(now);
+  source.stop(now + duration);
+}
+
 function playShowroomSound(context, kind) {
   if (kind === 'engine-start') {
     const now = context.currentTime;
@@ -137,12 +163,35 @@ function playShowroomSound(context, kind) {
     return;
   }
 
-  if (kind === 'select') {
-    playTone(context, 720, 510, 0.075, 0.035);
+  if (kind === 'seat') {
+    playMechanicalImpact(context, 360, 1450, 0.13);
+    playTone(context, 265, 128, 0.18, 0.14, 'triangle');
     return;
   }
 
-  playTone(context, 540, 310, 0.16, 0.14, 'triangle');
+  if (kind === 'select' || kind === 'click') {
+    playMechanicalImpact(context, 640, 2100, 0.075);
+    playTone(context, kind === 'select' ? 840 : 620, 430, 0.095, 0.08, 'triangle');
+    return;
+  }
+
+  if (kind === 'scrub') {
+    playTone(context, 155, 205, 0.18, 0.055, 'triangle');
+    return;
+  }
+
+  if (kind === 'orbit') {
+    playMechanicalImpact(context, 310, 880, 0.19);
+    playTone(context, 170, 115, 0.2, 0.045, 'triangle');
+    return;
+  }
+
+  if (kind === 'explode') {
+    playTone(context, 180, 68, 0.6, 0.24, 'sawtooth');
+    playMechanicalImpact(context, 100, 460, 0.45);
+    return;
+  }
+
   playTone(context, 105, 62, 0.2, 0.1);
 }
 
@@ -183,6 +232,8 @@ export default function CarShowroom() {
   const audioContextRef = useRef(null);
   const soundEnabledRef = useRef(false);
   const engineStartedRef = useRef(false);
+  const lastSeatedRef = useRef(0);
+  const lastScrubSoundRef = useRef(0);
   const [hud, setHud] = useState({ progress: 0, explodeAmount: 100, active: -1, done: 0, exploded: false });
   const AudioContextConstructor = typeof window !== 'undefined'
     ? window.AudioContext || window.webkitAudioContext
@@ -304,6 +355,16 @@ export default function CarShowroom() {
   }, [reduced]);
 
   useEffect(() => {
+    if (!started) return;
+    const previous = lastSeatedRef.current;
+    lastSeatedRef.current = hud.done;
+    if (simRef.current.phase !== 'assembling' || !soundEnabled || hud.done <= previous) return;
+    for (let seated = previous; seated < hud.done; seated += 1) {
+      playSound('seat');
+    }
+  }, [hud.done, soundEnabled, started]);
+
+  useEffect(() => {
     const focusPart = (event) => {
       setSelected(event.detail);
       setSelectedPart(null);
@@ -315,7 +376,7 @@ export default function CarShowroom() {
 
   const animate = (phase) => {
     simRef.current = { phase: reduced ? (phase === 'exploding' ? 'exploded' : 'assembled') : phase, start: performance.now() };
-    playSound('motion');
+    playSound(phase === 'exploding' ? 'explode' : 'motion');
   };
   const toggleExploded = () => animate(hud.exploded ? 'assembling' : 'exploding');
   const rebuild = () => {
@@ -323,10 +384,15 @@ export default function CarShowroom() {
     animate('assembling');
   };
   const scrubAssembly = (event) => {
+    const progress = Number(event.target.value) / 100;
     simRef.current = {
       phase: 'scrubbed',
-      progress: Number(event.target.value) / 100,
+      progress,
     };
+    if (Math.abs(progress - lastScrubSoundRef.current) >= 0.08 || progress === 0 || progress === 1) {
+      lastScrubSoundRef.current = progress;
+      playSound('scrub');
+    }
   };
   const onModelHover = (key, partId) => {
     setHovered(key);
@@ -337,6 +403,8 @@ export default function CarShowroom() {
     setSelectedPart(partId);
     playSound('select');
   };
+  const onOrbitStart = () => playSound('orbit');
+  const onOrbitEnd = () => playSound('click');
 
   const product = selected ? JARV_PRODUCTS.find((item) => item.three_part === selected) : null;
   const phaseLabel = getPhaseLabel(started, hud);
@@ -347,7 +415,7 @@ export default function CarShowroom() {
         <Canvas
           dpr={[1, 1.6]}
           camera={{ position: [7.2, 3.4, 7.6], fov: 38 }}
-          gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 0.95 }}
+          gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 0.82 }}
           onPointerMissed={() => {
             setSelected(null);
             setSelectedPart(null);
@@ -365,6 +433,8 @@ export default function CarShowroom() {
             onReady={onReady}
             autoRotate={autoRotate}
             headlightsOn={assembled}
+            onOrbitStart={onOrbitStart}
+            onOrbitEnd={onOrbitEnd}
           />
         </Canvas>
       </div>
@@ -410,7 +480,10 @@ export default function CarShowroom() {
       </div>
 
       <div className="jarv-controls" aria-label="Car animation controls">
-        <button type="button" className={autoRotate ? 'is-on' : ''} onClick={() => setAutoRotate((value) => !value)} aria-label="Toggle automatic car rotation" title="Auto rotate">↻</button>
+        <button type="button" className={autoRotate ? 'is-on' : ''} onClick={() => {
+          setAutoRotate((value) => !value);
+          playSound('click');
+        }} aria-label="Toggle automatic car rotation" title="Auto rotate">↻</button>
         <button type="button" onClick={toggleExploded}>{hud.exploded ? 'REASSEMBLE' : 'EXPLODE'}</button>
         <button type="button" className="jarv-rebuild" onClick={rebuild}>REBUILD</button>
         <button
