@@ -25,6 +25,7 @@ export default function App() {
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<Home />} />
         <Route path="/about" element={<About />} />
+        <Route path="/about-me" element={<About />} />
         <Route path="/cars" element={<RequireAccount><Cars /></RequireAccount>} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/login" element={<Login />} />
