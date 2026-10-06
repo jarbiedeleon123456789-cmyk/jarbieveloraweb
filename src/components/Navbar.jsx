@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TLink } from '../transition';
+import { TLink, useGo } from '../transition';
 import { useAuth } from '../auth';
 
 const LINKS = [
@@ -12,8 +12,10 @@ const LINKS = [
 
 export default function Navbar({ home = false }) {
   const { pathname } = useLocation();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const go = useGo();
   const [open, setOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   useEffect(() => setOpen(false), [pathname]);
   const links = user
     ? [LINKS[0], LINKS[1], ['Cars', '/cars'], LINKS[2]]
@@ -30,6 +32,15 @@ export default function Navbar({ home = false }) {
     : user
       ? [['Browse parts', '/cars'], ['My account', '/dashboard']]
       : [['Sign in', '/login'], ['Create account', '/register']];
+
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    await logout();
+    setOpen(false);
+    setLoggingOut(false);
+    go('/');
+  };
 
   return (
     <>
@@ -54,16 +65,28 @@ export default function Navbar({ home = false }) {
           <TLink to={cta.to} className="btn-nav">
             {cta.label} <span className="arrow">→</span>
           </TLink>
+          {user && (
+            <button className="nav-logout" type="button" onClick={handleLogout} disabled={loggingOut} aria-label="Log out of your account">
+              {loggingOut ? 'Signing out…' : 'Log out'}
+            </button>
+          )}
         </div>
       </motion.nav>
       <AnimatePresence>
         {open && (
           <motion.div className="mobile-menu" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
             {[...links, ...accountLinks].map(([label, to], i) => (
-              <motion.div key={to} initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.05 * i + 0.05 }}>
+              <motion.div key={`${label}-${to}`} initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.05 * i + 0.05 }}>
                 <TLink to={to} className="mobile-link" onClick={() => setOpen(false)}>{label}</TLink>
               </motion.div>
             ))}
+            {user && (
+              <motion.div key="logout" initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.05 * (links.length + accountLinks.length) + 0.05 }}>
+                <button className="mobile-link mobile-logout" type="button" onClick={handleLogout} disabled={loggingOut}>
+                  {loggingOut ? 'Signing out…' : 'Log out'}
+                </button>
+              </motion.div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

@@ -38,9 +38,11 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(async () => {
     const s = session.get();
-    try { if (s?.tokens?.refresh_token) await api.post('/auth/logout', { refresh_token: s.tokens.refresh_token }); } catch { /* ignore */ }
     session.clear();
     setUser(null);
+    if (s?.tokens?.refresh_token) {
+      api.post('/auth/logout', { refresh_token: s.tokens.refresh_token }).catch(() => {});
+    }
   }, []);
 
   return <AuthContext.Provider value={{ user, ready, login, register, logout }}>{children}</AuthContext.Provider>;

@@ -26,7 +26,7 @@ img { max-width: 100%; display: block; }
 .nav { position: relative; z-index: 3; display: flex; align-items: center; justify-content: space-between; padding: 34px 56px; }
 .nav-home { position: absolute; top: 0; left: 0; right: 0; }
 .nav-left { display: flex; align-items: center; flex: 1; }
-.nav-right { display: flex; justify-content: flex-end; flex: 1; }
+.nav-right { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex: 1; }
 .nav-links { display: flex; gap: 42px; }
 .nav-link { font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.82); padding-bottom: 3px; border-bottom: 2px solid transparent; transition: color .25s, border-color .25s; }
 .nav-link:hover { color: #fff; }
@@ -34,6 +34,9 @@ img { max-width: 100%; display: block; }
 .logo { color: #fff; font-size: 26px; font-weight: 700; letter-spacing: 0.04em; }
 .btn-nav { display: inline-flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); color: #FAF9F5; font-size: 14px; font-weight: 600; padding: 11px 20px; border-radius: 10px; transition: background .25s, color .25s, transform .25s; white-space: nowrap; }
 .btn-nav:hover { background: #e9e9ec; color: #0a0a0b; }
+.nav-logout { padding: 10px 13px; border: 1px solid rgba(255,255,255,0.15); border-radius: 9px; background: transparent; color: rgba(255,255,255,0.68); font-size: 12px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: color .2s, border-color .2s, background .2s, transform .2s; }
+.nav-logout:hover:not(:disabled) { transform: translateY(-1px); border-color: rgba(255,255,255,0.4); background: rgba(255,255,255,0.08); color: #fff; }
+.nav-logout:disabled { opacity: .55; cursor: progress; }
 .btn-nav .arrow, .btn-glass .arrow { font-size: 15px; display: inline-block; transition: transform .25s; }
 .btn-nav:hover .arrow { transform: translateX(4px); }
 .btn-glass { display: inline-flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); color: #fff; font-size: 14px; font-weight: 600; letter-spacing: 0.04em; padding: 13px 24px; border-radius: 10px; cursor: pointer; transition: background .25s, color .25s, border-color .25s; }
@@ -44,6 +47,9 @@ img { max-width: 100%; display: block; }
 .nav-burger span { width: 18px; height: 2px; background: #fff; display: block; }
 .mobile-menu { position: fixed; inset: 0; z-index: 50; background: rgba(8,8,10,0.96); backdrop-filter: blur(8px); display: flex; flex-direction: column; justify-content: center; gap: 8px; padding: 0 36px; }
 .mobile-link { display: block; font-size: 44px; font-weight: 700; letter-spacing: -0.02em; padding: 8px 0; color: #fff; }
+.mobile-logout { width: fit-content; margin-top: 20px; padding: 8px 0; border: 0; border-top: 1px solid rgba(255,255,255,.22); background: transparent; text-align: left; cursor: pointer; }
+.mobile-logout:hover:not(:disabled) { color: rgba(255,255,255,.65); }
+.mobile-logout:disabled { opacity: .55; cursor: progress; }
 
 /* ---------------- PAGE TRANSITION ---------------- */
 .curtain, .curtain-back { position: fixed; inset: 0; z-index: 1000; transform: translateY(100%); pointer-events: none; }
@@ -460,6 +466,8 @@ tbody tr:hover { background: rgba(255,255,255,0.03); }
   .nav-burger { display: flex; }
   .logo { font-size: 22px; }
   .btn-nav { padding: 9px 14px; font-size: 13px; }
+  .nav-right { gap: 7px; }
+  .nav-logout { padding: 9px 10px; font-size: 11px; }
   .hero-copy { left: 22px; right: 22px; bottom: 36px; max-width: none; }
   .hero-title { top: 84px; }
   .section { padding: 36px 22px 28px; }
@@ -568,8 +576,10 @@ tbody tr:hover { background: rgba(255,255,255,0.03); }
   .zip-product-content h3 { font-size: 15px; }
   .zip-product-content > p { min-height: 0; font-size: 10px; }
   .nav { padding: 20px 16px; }
-  .logo { font-size: 19px; }
-  .btn-nav { padding: 8px 12px; font-size: 12px; }
+  .logo { font-size: 17px; }
+  .btn-nav { padding: 8px 9px; font-size: 11px; }
+  .nav-right { gap: 6px; }
+  .nav-logout { padding: 8px 8px; font-size: 10px; }
   .row { grid-template-columns: 1fr; }
   .btn-nav .arrow { display: none; }
   .form-card, .modal { padding: 20px; }
