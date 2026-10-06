@@ -19,14 +19,17 @@ export default function Navbar({ home = false }) {
     ? [LINKS[0], LINKS[1], ['Cars', '/cars'], LINKS[2]]
     : LINKS;
 
+  const isAdmin = user?.role === 'admin';
   const cta = home
     ? { label: user ? 'Browse parts' : 'Sign in to browse parts', to: user ? '/cars' : '/login' }
     : user
-      ? { label: 'Dashboard', to: '/dashboard' }
+      ? { label: isAdmin ? 'Dashboard' : 'My account', to: '/dashboard' }
       : { label: 'Sign in', to: '/login' };
-  const accountLinks = user
-    ? [['Cars & parts', '/cars'], ['Dashboard', '/dashboard']]
-    : [['Sign in', '/login'], ['Create account', '/register']];
+  const accountLinks = isAdmin
+    ? [['Cars & parts', '/cars'], ['Admin dashboard', '/dashboard']]
+    : user
+      ? [['Browse parts', '/cars'], ['My account', '/dashboard']]
+      : [['Sign in', '/login'], ['Create account', '/register']];
 
   return (
     <>

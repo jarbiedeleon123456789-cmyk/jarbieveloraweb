@@ -94,20 +94,21 @@ export default function Dashboard() {
   const [modal, setModal] = useState(null); // {type:'form', item} | {type:'delete', item}
   const [toast, setToast] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const isAdmin = user?.role === 'admin';
 
   const load = useCallback(() => {
     setState('loading');
+    setError('');
     api.get('/products')
       .then(({ data }) => { setRows(data.data); setState('ready'); })
       .catch((err) => { setError(errorMessage(err)); setState('error'); });
   }, []);
 
-  useEffect(() => { if (user) load(); }, [user, load]);
+  useEffect(() => { if (user && isAdmin) load(); }, [user, isAdmin, load]);
   useEffect(() => { if (!toast) return undefined; const t = setTimeout(() => setToast(''), 2800); return () => clearTimeout(t); }, [toast]);
 
   if (!ready) return <div className="boot">Loading…</div>;
   if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== 'admin') return <Navigate to="/cars" replace />;
 
   const saved = (msg) => { setModal(null); setToast(msg); load(); };
   const remove = async () => {
@@ -118,21 +119,91 @@ export default function Dashboard() {
   };
   const doLogout = async () => { await logout(); go('/login'); };
   const categories = [...new Set(rows.map((r) => r.category))];
+  const inventoryCount = rows.reduce((total, row) => total + Number(row.quantity || 0), 0);
 
   return (
     <Page>
-      <section className="section">
+      {!isAdmin ? (
+        <section className="section customer-dashboard">
+          <motion.div className="customer-welcome" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55 }}>
+            <div className="customer-welcome-copy">
+              <Eyebrow>YOUR VELORA ACCOUNT</Eyebrow>
+              <span className="account-role-badge"><span /> Customer account</span>
+              <h1 className="h1">Welcome back,<br /><span>{user.username || 'Driver'}.</span></h1>
+              <p>Your next drive starts with the right parts. Browse the catalog whenever you’re ready.</p>
+              <div className="dash-actions customer-actions">
+                <button className="btn-solid customer-browse" type="button" onClick={() => go('/cars')}>Explore parts <span aria-hidden="true">↗</span></button>
+                <button className="btn-ghost" type="button" onClick={doLogout}>Log out</button>
+              </div>
+            </div>
+            <div className="customer-welcome-art" aria-hidden="true">
+              <div className="customer-orbit customer-orbit-one" />
+              <div className="customer-orbit customer-orbit-two" />
+              <span className="customer-art-mark">V</span>
+              <span className="customer-art-caption">BUILT FOR THE DRIVE</span>
+            </div>
+          </motion.div>
+
+          <motion.div className="customer-account-card" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.12 }}>
+            <div className="customer-card-heading">
+              <div><Eyebrow>ACCOUNT DETAILS</Eyebrow><h2>Your profile</h2></div>
+              <span className="customer-account-icon" aria-hidden="true">✳</span>
+            </div>
+            <div className="customer-profile-grid">
+              <div><span>NAME</span><strong>{user.username || 'VELORA customer'}</strong></div>
+              <div><span>EMAIL ADDRESS</span><strong>{user.email}</strong></div>
+              <div><span>ACCOUNT TYPE</span><strong>Customer</strong></div>
+              <div><span>ACCESS</span><strong><i /> Parts catalog</strong></div>
+            </div>
+            <div className="customer-account-foot">
+              <span>Your account is ready. Find the right fit for your vehicle in the catalog.</span>
+              <button className="btn-ghost" type="button" onClick={() => go('/cars')}>Browse catalog <span aria-hidden="true">→</span></button>
+            </div>
+          </motion.div>
+        </section>
+      ) : (
+      <>
+      <section className="section admin-dashboard">
         <div className="dash-head">
           <div>
-            <Eyebrow>Dashboard · {user.email}</Eyebrow>
-            <h1 className="h1">Manage parts</h1>
+            <Eyebrow>ADMINISTRATION · {user.email}</Eyebrow>
+            <h1 className="h1">Operations<br className="admin-title-break" /> dashboard.</h1>
+            <p className="admin-dashboard-lead">Manage your catalog and customer accounts from one place.</p>
           </div>
           <div className="dash-actions">
-            <button className="btn-solid" onClick={() => setModal({ type: 'form', item: null })}>+ Add part</button>
-            <button className="btn-ghost" onClick={doLogout}>Log out</button>
+            <button className="btn-solid" type="button" onClick={() => setModal({ type: 'form', item: null })}>+ Add part</button>
+            <button className="btn-ghost" type="button" onClick={() => document.getElementById('user-management')?.scrollIntoView({ behavior: 'smooth' })}>Manage accounts <span aria-hidden="true">↓</span></button>
+            <button className="btn-ghost" type="button" onClick={doLogout}>Log out</button>
           </div>
         </div>
 
+        <div className="admin-metrics" aria-label="Catalog overview">
+          <motion.div className="admin-metric" whileHover={{ y: -3 }}>
+            <span className="admin-metric-label">CATALOG ITEMS</span>
+            <strong>{state === 'ready' ? rows.length : '—'}</strong>
+            <span className="admin-metric-note">Parts listed in your catalog</span>
+          </motion.div>
+          <motion.div className="admin-metric" whileHover={{ y: -3 }}>
+            <span className="admin-metric-label">CATEGORIES</span>
+            <strong>{state === 'ready' ? categories.length : '—'}</strong>
+            <span className="admin-metric-note">Distinct parts categories</span>
+          </motion.div>
+          <motion.div className="admin-metric" whileHover={{ y: -3 }}>
+            <span className="admin-metric-label">UNITS IN STOCK</span>
+            <strong>{state === 'ready' ? inventoryCount.toLocaleString() : '—'}</strong>
+            <span className="admin-metric-note">Combined catalog quantity</span>
+          </motion.div>
+          <motion.button className="admin-metric admin-metric-action" type="button" aria-label="Manage user accounts" whileHover={{ y: -3 }} onClick={() => document.getElementById('user-management')?.scrollIntoView({ behavior: 'smooth' })}>
+            <span className="admin-metric-label">ACCESS CONTROL</span>
+            <strong>Users <span aria-hidden="true">↗</span></strong>
+            <span className="admin-metric-note">Manage roles and accounts</span>
+          </motion.button>
+        </div>
+
+        <div className="admin-section-heading">
+          <div><Eyebrow>INVENTORY CONTROL</Eyebrow><h2>Manage parts</h2></div>
+          <button className="btn-solid" type="button" onClick={() => setModal({ type: 'form', item: null })}>+ Add part</button>
+        </div>
         {state === 'error' && <div className="notice"><p>{error}</p><button className="btn-solid" onClick={load}>Try again</button></div>}
         {state === 'loading' && rows.length === 0 && <div className="notice"><p>Loading parts…</p></div>}
         {state === 'ready' && rows.length === 0 && <div className="notice"><p>No parts yet. Add your first one.</p></div>}
@@ -162,10 +233,10 @@ export default function Dashboard() {
         )}
       </section>
 
-      {user.role === 'admin' && (
-        <section className="section">
+        <section className="section admin-users-section" id="user-management">
           <AdminUsers currentUserId={Number(user.id)} />
         </section>
+      </>
       )}
 
       <AnimatePresence>
